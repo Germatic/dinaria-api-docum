@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dinaria API Docs</title>
+  <link rel="stylesheet" href="assets/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a href="#" onclick="goHome();return false;" class="logo">
+        <img src="https://dinariap.github.io/dinaria-api-docs/assets/images/dinaria-logo.jpg" alt="Dinaria" class="logo-img" />
+        <span class="logo-text">API Docs</span>
+      </a>
+    </div>
+
+    <div class="scope-bar">
+      <button class="chip" id="chip-argentina" onclick="setScope('argentina')">Argentina</button>
+      <button class="chip" id="chip-brazil" onclick="setScope('brazil')">Brazil</button>
+    </div>
+
+    <nav class="nav-tree" id="nav-tree">
+      <div class="nav-loading">Loading...</div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a href="spec/viewer.html" target="_blank" class="spec-link">
+        API Specification (OpenAPI)
+      </a>
+    </div>
+  </aside>
+
+  <div class="main-wrap">
+    <header class="topbar">
+      <button class="menu-toggle" id="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
+      <span class="topbar-title" id="topbar-title">Dinaria API Docs</span>
+      <div class="topbar-scope">
+        <button class="chip small" id="topbar-chip-argentina" onclick="setScope('argentina')">Argentina</button>
+        <button class="chip small" id="topbar-chip-brazil" onclick="setScope('brazil')">Brazil</button>
+      </div>
+    </header>
+
+    <main class="content" id="content">
+      <div class="content-inner" id="content-inner">
+        <div class="welcome">
+          <h1>Dinaria API Documentation</h1>
+          <p>The Dinaria API lets you create, manage, and track payments through secure, backend-driven flows.</p>
+          <p>Use the <strong>Argentina</strong> or <strong>Brazil</strong> chip to switch scopes. Each scope shows the relevant endpoints, identifiers (CBU/CVU for Argentina, PIX keys for Brazil), and currency (ARS / BRL).</p>
+          <div class="welcome-links">
+            <a href="#" onclick="setScope('argentina');loadPage('content/argentina/01_getting_started.md','Getting Started');return false;" class="welcome-btn">Get started &mdash; Argentina</a>
+            <a href="#" onclick="setScope('brazil');loadPage('content/brazil/01_getting_started.md','Getting Started');return false;" class="welcome-btn brazil">Get started &mdash; Brazil</a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

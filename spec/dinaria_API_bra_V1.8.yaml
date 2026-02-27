@@ -1,0 +1,3178 @@
+openapi: 3.0.3
+info:
+  title: Dinaria API — Brazil (PIX)
+  version: 1.8.0
+  description: "PIX-based payments and payouts for Brazil using redirect-based flows.\n\
+    \nMerchants can:\n- Create payments and redirect customers to complete checkout\n\
+    - Retrieve payment details and current status\n- Discover available payment methods\
+    \ (IDs)\n- Receive asynchronous updates via webhooks\n- Send money out via payouts\
+    \ (bank rails) to customers\n- Handle cash payouts (cash-out) via cash withdrawals\
+    \ through partner agent networks\n\nNotes:\n- Payments are single-use: create\
+    \ a new payment for each attempt.\n- Redirects to success/cancel URLs do not guarantee\
+    \ the final status.\n  Confirm final state via webhooks (recommended) or by retrieving\
+    \ the payment."
+  contact:
+    name: Development Team
+    email: support@api.com
+servers:
+- url: https://api.dinaria.com/v1/br
+  description: Brazil production environment
+externalDocs:
+  description: Dinaria API Guides
+  url: https://docs.dinaria.com/guides
+tags:
+- name: Payments
+  description: 'Operations for creating payments, redirecting customers to complete
+    checkout,
+
+    and retrieving payment status throughout its lifecycle.
+
+    '
+  externalDocs:
+    description: Payments integration guides
+    url: https://docs.dinaria.com/guides/payments
+- name: Payouts
+  description: 'Operations for sending money (money-out) to external customers
+    using bank rails (e.g. ACH/WIRE).
+
+    '
+  externalDocs:
+    description: Payouts guides
+    url: https://docs.dinaria.com/guides/payouts
+- name: Customers
+  description: 'Manage payout customers and their bank accounts for recurring
+    payouts.
+
+    '
+  externalDocs:
+    description: Customers guides
+    url: https://docs.dinaria.com/guides/payouts/customers
+- name: Cash
+  description: Operations for cash-out (money-out) via partner agents (pickup code
+    lifecycle). Cash deposits (cash-in) are modeled through Payments.
+- name: FX
+  description: Foreign exchange quotes used for cross-currency payouts.
+- name: Accounts
+  description: Prefunded accounts and balances.
+- name: Webhooks
+  description: 'Webhook configuration and event delivery.
+
+
+    NOTE: This API includes two webhook-related concepts:
+
+    1) Webhook registration (configuration) called by merchants.
+
+    2) Webhook delivery (events) called by our platform to merchants.
+
+    '
+  externalDocs:
+    description: Webhooks guides and security
+    url: https://docs.dinaria.com/guides/webhooks
+security:
+- ApiKeyAuth: []
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: APIKey
+      description: 'Authentication is performed using an API key.
+
+        Include your secret key in the Authorization header:
+
+
+        Authorization: Bearer sk_test_xxx
+
+        '
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: 'A unique key that allows safe retries of payment creation requests.
+
+
+        When the same Idempotency-Key is reused, duplicate payments are prevented.
+
+        Strongly recommended for all POST /payments requests.
+
+
+        Example: a UUID v4.
+
+        '
+      schema:
+        type: string
+        maxLength: 128
+    TransactionIdPath:
+      name: transactionId
+      in: path
+      required: true
+      description: Transaction identifier.
+      schema:
+        type: string
+    CountryQuery:
+      name: country
+      in: query
+      required: false
+      description: Country code (ISO 3166-1 alpha-2), e.g. "US".
+      schema:
+        type: string
+        minLength: 2
+        maxLength: 2
+    CurrencyQuery:
+      name: currency
+      in: query
+      required: false
+      description: Currency code (ISO 4217), e.g. "USD".
+      schema:
+        type: string
+        minLength: 3
+        maxLength: 3
+    TypeQuery:
+      name: type
+      in: query
+      required: false
+      description: Payment method type filter (e.g. cash, bank, wallet, crypto).
+      schema:
+        type: string
+    WebhookTimestampHeader:
+      name: X-Webhook-Timestamp
+      in: header
+      required: true
+      description: 'Webhook event timestamp in Unix seconds.
+
+
+        Used together with X-Webhook-Signature to verify the webhook origin and integrity.
+
+        '
+      schema:
+        type: integer
+        format: int64
+      example: 1737000000
+    WebhookSignatureHeader:
+      name: X-Webhook-Signature
+      in: header
+      required: true
+      description: 'Webhook signature header.
+
+
+        Format: `t=<timestamp>,v1=<hex_hmac_sha256>`
+
+
+        Signature base string: `<timestamp>.<raw_body>`
+
+        Signature: HMAC-SHA256(webhookSecret, base string)
+
+
+        The `webhookSecret` is returned only once during webhook registration or rotation.
+
+        '
+      schema:
+        type: string
+      example: t=1737000000,v1=9d0c...ab12
+  headers:
+    RequestId:
+      description: 'Unique identifier for this request, useful for troubleshooting
+        with support.
+
+        '
+      schema:
+        type: string
+    Request-Id:
+      description: Unique identifier for this request, useful for troubleshooting
+        with support.
+      schema:
+        type: string
+  schemas:
+    ErrorResponse:
+      type: object
+      description: Standard error response.
+      required:
+      - error
+      properties:
+        error:
+          type: object
+          required:
+          - code
+          - message
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code.
+              example: invalid_request
+            message:
+              type: string
+              description: Human-readable error description.
+              example: Invalid request payload.
+            param:
+              type: string
+              nullable: true
+              description: Optional parameter name related to the error.
+              example: amount
+            requestId:
+              type: string
+              nullable: true
+              description: Mirrors the Request-Id header, if available.
+              example: req_01HX9K2X2Z0V7K0M2S2Y8A1B2C
+    Customer:
+      type: object
+      description: 'Information about the end customer performing the payment.
+
+        Used for identification, validation, and reporting purposes.
+
+        '
+      properties:
+        firstName:
+          type: string
+          description: Customer first name.
+        lastName:
+          type: string
+          description: Customer last name.
+        fullName:
+          type: string
+          description: Customer full name (optional convenience field).
+        documentType:
+          type: string
+          enum:
+          - nationalId
+          - passport
+          - other
+          description: Type of identification document.
+        documentNumber:
+          type: string
+          description: Identification document number.
+        country:
+          type: string
+          description: Customer country code in ISO 3166-1 alpha-2 format.
+          example: US
+        state:
+          type: string
+          description: 'State/region code.
+
+
+            Recommended format: ISO 3166-2 (e.g. "US-CA").
+
+            If the merchant does not know the ISO 3166-2 code, a commonly used
+
+            region name may be provided.
+
+            '
+          example: US-CA
+        city:
+          type: string
+          description: City name (free text).
+          example: San Francisco
+        address:
+          type: string
+          description: Full postal address of the customer.
+        zipcode:
+          type: string
+          description: Postal or ZIP code (free text; may be alphanumeric).
+        phoneNumber:
+          type: string
+          description: 'Customer phone number.
+
+            Recommended format: E.164 (e.g. +59899123456).
+
+            '
+        email:
+          type: string
+          format: email
+          description: Customer email address.
+    PaymentRequest:
+      type: object
+      description: 'Request payload used to create a new payment.
+
+
+        A payment represents a single checkout attempt.
+
+        If the payment is cancelled or expires, a new payment must be created.
+
+        '
+      required:
+      - amount
+      - currency
+      - paymentMethods
+      - successUrl
+      - cancelUrl
+      properties:
+        externalId:
+          type: string
+          description: 'Merchant-provided identifier for the payment.
+
+
+            Use this field to link the payment to your internal order or checkout
+            ID.
+
+            The value is stored and returned in responses and webhooks.
+
+            '
+          example: ORD-1001
+        amount:
+          type: string
+          description: 'Total transaction amount expressed as a decimal value.
+
+            Example: "100.50".
+
+            '
+        currency:
+          type: string
+          description: Currency code in ISO 4217 format.
+          example: USD
+        customer:
+          $ref: '#/components/schemas/Customer'
+        paymentMethods:
+          type: array
+          description: 'List of payment method IDs allowed for this transaction.
+
+
+            This field acts as a strict whitelist. Only the specified payment method
+            IDs
+
+            will be available to the customer during checkout.
+
+            '
+          items:
+            type: string
+            example: pm_card
+        successUrl:
+          type: string
+          format: uri
+          description: 'URL where the customer is redirected after completing the
+            payment flow.
+
+
+            This redirect does not guarantee final payment confirmation.
+
+            Always validate the payment result server-side (webhooks or retrieve payment).
+
+            '
+        cancelUrl:
+          type: string
+          format: uri
+          description: 'URL where the customer is redirected if the payment is cancelled
+            or
+
+            cannot be completed.
+
+            '
+        expiration:
+          type: string
+          format: date-time
+          description: 'Date and time after which the payment can no longer be completed.
+
+            Once expired, the payment moves to the `expired` status.
+
+            '
+        metadata:
+          type: object
+          description: 'Free-form key-value data attached to the payment.
+
+
+            Use metadata to store internal references (order IDs, customer segments,
+            etc.).
+
+            This data is returned in retrieve-payment responses and webhooks.
+
+            '
+          additionalProperties:
+            type: string
+    PaymentResponse:
+      type: object
+      description: 'Represents the current state of a payment.
+
+
+        Payments move through multiple states during their lifecycle and eventually
+
+        reach a terminal state such as `confirmed`, `cancelled`, or `expired`.
+
+        '
+      properties:
+        transactionId:
+          type: string
+          description: Unique identifier of the transaction.
+        externalId:
+          type: string
+          description: 'Merchant-provided identifier for the payment.
+
+            Mirrors the `externalId` sent during payment creation.
+
+            '
+          example: ORD-1001
+        status:
+          type: string
+          enum:
+          - started
+          - inprogress
+          - confirmed
+          - cancelled
+          - expired
+          description: 'Current payment status.
+
+
+            Possible values:
+
+            - started: Payment was created successfully.
+
+            - inprogress: Customer is completing the payment.
+
+            - confirmed: Payment was completed successfully.
+
+            - cancelled: Payment was cancelled or failed.
+
+            - expired: Payment expired before completion.
+
+
+            Once a payment reaches a terminal state, it cannot be reused.
+
+            '
+        amount:
+          type: string
+          description: Original transaction amount.
+        refundedAmount:
+          type: string
+          description: Total amount refunded so far.
+        currency:
+          type: string
+          description: Transaction currency.
+        creationDate:
+          type: string
+          format: date-time
+          description: Date and time when the payment was created.
+        confirmationDate:
+          type: string
+          format: date-time
+          description: Date and time when the payment was confirmed.
+        refunded:
+          type: boolean
+          description: Indicates whether the payment has been partially or fully refunded.
+        reversed:
+          type: boolean
+          description: Indicates whether the payment was reversed before settlement.
+        reversionDate:
+          type: string
+          format: date-time
+          description: Date when the reversal occurred.
+        disputed:
+          type: boolean
+          description: Indicates whether the payment is under dispute.
+        disputeDate:
+          type: string
+          format: date-time
+          description: Date when the dispute started.
+        paid:
+          type: boolean
+          description: Indicates whether the funds have been fully settled.
+        paidDate:
+          type: string
+          format: date-time
+          description: Settlement date of the payment.
+        paymentMethods:
+          type: array
+          description: Payment method IDs enabled or used in the transaction.
+          items:
+            type: string
+        actionUrl:
+          type: string
+          format: uri
+          description: 'URL where the merchant must redirect the customer to complete
+            the payment.
+
+
+            The payment flow is not completed until the customer visits this URL and
+
+            finishes the checkout process.
+
+            '
+        expirationDate:
+          type: string
+          format: date-time
+          description: Effective expiration date of the payment.
+        metadata:
+          type: object
+          description: 'Free-form key-value data attached to the payment.
+
+            Mirrors the `metadata` sent during payment creation.
+
+            '
+          additionalProperties:
+            type: string
+        customer:
+          $ref: '#/components/schemas/Customer'
+    PaymentMethod:
+      type: object
+      description: Payment method available for a given country and currency.
+      properties:
+        id:
+          type: string
+          description: Payment method ID.
+          example: pm_card
+        name:
+          type: string
+          description: Display name of the payment method.
+        country:
+          type: string
+          description: Country where the method is available (ISO 3166-1).
+        currency:
+          type: string
+          description: Supported currency (ISO 4217).
+        type:
+          type: string
+          description: Type of payment method (e.g. cash, bank, wallet, crypto).
+          example: card
+    WebhookRegistrationRequest:
+      type: object
+      description: Payload used by merchants to register a webhook endpoint URL.
+      required:
+      - webhookUrl
+      properties:
+        webhookUrl:
+          type: string
+          format: uri
+          description: Merchant webhook URL where payment update events will be delivered.
+    WebhookRegistrationResponse:
+      type: object
+      description: 'Webhook registration response.
+
+
+        The `webhookSecret` is shown only once. Store it securely.
+
+        '
+      required:
+      - webhookUrl
+      - webhookSecret
+      - createdAt
+      properties:
+        webhookUrl:
+          type: string
+          format: uri
+          description: Registered webhook URL.
+        webhookSecret:
+          type: string
+          description: 'Secret used to verify webhook signatures.
+
+
+            Shown only once. It cannot be retrieved again.
+
+            '
+          example: whsec_9f3c2a1b7d5e4c3a...
+        createdAt:
+          type: string
+          format: date-time
+          description: Registration timestamp.
+    WebhookRotateSecretResponse:
+      type: object
+      description: 'Rotation result.
+
+
+        The `webhookSecret` is shown only once. Store it securely.
+
+        '
+      required:
+      - webhookUrl
+      - webhookSecret
+      - rotatedAt
+      properties:
+        webhookUrl:
+          type: string
+          format: uri
+          description: The webhook URL whose secret was rotated.
+        webhookSecret:
+          type: string
+          description: 'New secret used to verify webhook signatures.
+
+
+            Shown only once. It cannot be retrieved again.
+
+            '
+          example: whsec_2b91d0f6a1d34f0b...
+        rotatedAt:
+          type: string
+          format: date-time
+          description: Rotation timestamp.
+        previousSecretExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'If you support a grace period, this indicates when the previous
+            secret
+
+            will stop being accepted.
+
+            '
+    WebhookPaymentUpdate:
+      type: object
+      description: 'Event sent to the merchant when a payment status changes.
+
+
+        Webhook deliveries are at-least-once. Your receiver must be idempotent.
+
+        '
+      properties:
+        transactionId:
+          type: string
+          description: Identifier of the affected transaction.
+        externalId:
+          type: string
+          description: Merchant-provided identifier for the payment.
+          example: ORD-1001
+        status:
+          type: string
+          enum:
+          - started
+          - inprogress
+          - confirmed
+          - cancelled
+          - expired
+          - refunded
+          - disputed
+          - paid
+          description: New payment status.
+        amount:
+          type: string
+          description: Transaction amount.
+        currency:
+          type: string
+          description: Transaction currency.
+        confirmationDate:
+          type: string
+          format: date-time
+          description: Payment confirmation date, if applicable.
+        metadata:
+          type: object
+          description: Free-form key-value data attached to the payment.
+          additionalProperties:
+            type: string
+        paymentMethods:
+          type: array
+          description: Payment method IDs associated with the transaction.
+          items:
+            type: string
+        customer:
+          $ref: '#/components/schemas/Customer'
+    CustomerRequest:
+      type: object
+      description: Customer information used as a reusable payout destination
+        (person or business).
+      required:
+      - type
+      - name
+      - country
+      properties:
+        type:
+          type: string
+          enum:
+          - individual
+          - business
+          example: individual
+        name:
+          type: string
+          example: John Doe
+        email:
+          type: string
+          format: email
+          example: john.doe@example.com
+        country:
+          type: string
+          minLength: 2
+          maxLength: 2
+          example: US
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: Optional key-value metadata.
+    CustomerResponse:
+      type: object
+      description: Customer resource.
+      properties:
+        customerId:
+          type: string
+          example: bnf_12345
+        type:
+          type: string
+          enum:
+          - individual
+          - business
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        country:
+          type: string
+        defaultBankAccountId:
+          type: string
+          nullable: true
+          example: ba_67890
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+    BankAccountRequest:
+      type: object
+      description: Bank account details for a customer. Sensitive fields should
+        be stored securely.
+      required:
+      - country
+      - currency
+      - rail
+      - accountType
+      - holderName
+      properties:
+        country:
+          type: string
+          minLength: 2
+          maxLength: 2
+          example: US
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: USD
+        rail:
+          type: string
+          enum:
+          - ACH
+          - WIRE
+          - SEPA
+          - SPEI
+          - PIX
+          - OTHER
+          example: ACH
+        routingNumber:
+          type: string
+          description: Routing number (e.g., ACH routing).
+          example: '021000021'
+        accountNumber:
+          type: string
+          description: Account number. Do not log.
+          example: '123456789'
+        iban:
+          type: string
+          description: IBAN for certain rails (e.g., SEPA).
+        accountType:
+          type: string
+          enum:
+          - checking
+          - savings
+          - other
+          example: checking
+        holderName:
+          type: string
+          example: John Doe
+        holderAddress:
+          type: string
+          description: Optional address string.
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+    BankAccountResponse:
+      type: object
+      description: Bank account resource associated with a customer.
+      properties:
+        bankAccountId:
+          type: string
+          example: ba_67890
+        customerId:
+          type: string
+          example: bnf_12345
+        country:
+          type: string
+        currency:
+          type: string
+        rail:
+          type: string
+        routingNumberLast4:
+          type: string
+          nullable: true
+          example: '0021'
+        accountNumberLast4:
+          type: string
+          nullable: true
+          example: '6789'
+        ibanLast4:
+          type: string
+          nullable: true
+        accountType:
+          type: string
+        holderName:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+    PayoutRequest:
+      type: object
+      description: 'Creates a payout (money-out) from a Dinaria account.
+
+
+        Provide either:
+
+        - `customerId` (recommended for recurring payouts), optionally `bankAccountId`,
+        OR
+
+        - `destination` (inline bank account for one-off payouts).
+
+
+        FX:
+
+        - To use a locked rate, provide `fxQuoteId`.
+
+        - To let Dinaria create a quote automatically, set `autoQuote=true` and provide
+        `amountType`.'
+      properties:
+        externalId:
+          type: string
+          description: Merchant-provided identifier for reconciliation.
+          example: PAYOUT-1001
+        amount:
+          type: string
+          description: Decimal amount as string (e.g. "1250.00").
+          example: '1250.00'
+        currency:
+          type: string
+          example: USD
+        sourceAccountId:
+          type: string
+          description: Dinaria account from which funds will be debited.
+          example: acc_123
+        rail:
+          type: string
+          enum:
+          - ACH
+          - WIRE
+          - SEPA
+          - SPEI
+          - PIX
+          - OTHER
+          example: ACH
+        customerId:
+          type: string
+          description: Saved customer id for recurring payouts.
+          example: bnf_12345
+        bankAccountId:
+          type: string
+          description: Optional specific bank account id of the customer.
+          example: ba_67890
+        destination:
+          type: object
+          description: Inline bank account destination (one-off). Mutually exclusive
+            with customerId.
+          properties:
+            country:
+              type: string
+              example: US
+            currency:
+              type: string
+              example: USD
+            rail:
+              type: string
+              enum:
+              - ACH
+              - WIRE
+              - SEPA
+              - SPEI
+              - PIX
+              - OTHER
+              example: ACH
+            routingNumber:
+              type: string
+              example: '021000021'
+            accountNumber:
+              type: string
+              example: '123456789'
+            iban:
+              type: string
+            accountType:
+              type: string
+              enum:
+              - checking
+              - savings
+              - other
+              example: checking
+            holderName:
+              type: string
+              example: John Doe
+        description:
+          type: string
+          example: Weekly settlement
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        fxQuoteId:
+          type: string
+          description: Optional FX quote id created via POST /fx/quotes. If provided,
+            payout uses the quote amounts and rate.
+          example: fx_123
+        autoQuote:
+          type: boolean
+          description: If true and a cross-currency payout is required, Dinaria will
+            create an FX quote automatically.
+          default: false
+        amountType:
+          type: string
+          enum:
+          - source
+          - destination
+          description: Whether `amount` is in the source currency (debited) or destination
+            currency (received). Defaults to `destination` for payouts.
+          example: destination
+        destinationCurrency:
+          type: string
+          description: Currency the customer should receive. If omitted, defaults
+            to `currency` or the customer bank account currency when available.
+          example: MXN
+      oneOf:
+      - required:
+        - fxQuoteId
+      - required:
+        - amount
+        - currency
+    PayoutResponse:
+      type: object
+      description: Payout resource.
+      properties:
+        payoutId:
+          type: string
+          example: po_123456
+        externalId:
+          type: string
+          example: PAYOUT-1001
+        status:
+          type: string
+          enum:
+          - created
+          - processing
+          - succeeded
+          - failed
+          - cancelled
+          example: created
+        amount:
+          type: string
+          example: '1250.00'
+        currency:
+          type: string
+          example: USD
+        sourceAccountId:
+          type: string
+          example: acc_123
+        rail:
+          type: string
+          example: ACH
+        customerId:
+          type: string
+          nullable: true
+        bankAccountId:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        creationDate:
+          type: string
+          format: date-time
+        completionDate:
+          type: string
+          format: date-time
+          nullable: true
+        failureReason:
+          type: string
+          nullable: true
+        fx:
+          type: object
+          nullable: true
+          description: FX details when the payout involves currency conversion.
+          properties:
+            quoteId:
+              type: string
+              nullable: true
+              example: fx_123
+            sourceCurrency:
+              type: string
+              example: USD
+            destinationCurrency:
+              type: string
+              example: MXN
+            rate:
+              type: string
+              example: '17.50'
+            sourceAmount:
+              type: string
+              example: '1142.86'
+            destinationAmount:
+              type: string
+              example: '20000.00'
+    CashVoucher:
+      type: object
+      description: Voucher or pickup code to be presented at a cash location.
+      required:
+      - type
+      - value
+      properties:
+        type:
+          type: string
+          enum:
+          - barcode
+          - qr
+          - numeric
+          description: Code format.
+        value:
+          type: string
+          description: Raw code value.
+        display:
+          type: string
+          nullable: true
+          description: Human-friendly formatted version of the code.
+    CashAgentResponse:
+      type: object
+      description: 'A cash-out partner agent/network. Typically represents an entire
+        retail chain or partner network.
+
+        '
+      properties:
+        agentId:
+          type: string
+          example: agent_oxxo
+        name:
+          type: string
+          example: OXXO
+        countries:
+          type: array
+          items:
+            type: string
+          example:
+          - MX
+        currencies:
+          type: array
+          items:
+            type: string
+          example:
+          - MXN
+        locatorUrl:
+          type: string
+          description: Optional partner store-locator URL for end-users.
+          example: https://partner.example.com/locator
+        instructionsTemplate:
+          type: string
+          description: Optional template merchants may display to end-users.
+          example: Present the pickup code at any participating store with a valid
+            ID.
+    CashWithdrawalRequest:
+      type: object
+      description: Request payload to create a cash withdrawal (cash-out). Returns
+        a pickup code that can be used at an agent network.
+      required:
+      - amount
+      - currency
+      - sourceAccountId
+      properties:
+        externalId:
+          type: string
+        amount:
+          type: string
+        currency:
+          type: string
+          example: USD
+        sourceAccountId:
+          type: string
+          description: Dinaria account to be debited for the cash-out.
+        expiresInSeconds:
+          type: integer
+          minimum: 60
+          maximum: 604800
+          default: 3600
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        agentId:
+          type: string
+          description: Optional. Agent (network/partner) identifier to constrain where
+            cash can be picked up.
+        agentName:
+          type: string
+          description: Optional. Agent (network/partner) name. Informational.
+      additionalProperties: false
+    CashWithdrawalResponse:
+      type: object
+      description: Cash withdrawal instruction lifecycle object.
+      properties:
+        cashWithdrawalId:
+          type: string
+          example: cwd_456
+        externalId:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+          - pending
+          - pickedUp
+          - settled
+          - expired
+          - cancelled
+          - failed
+        amount:
+          type: string
+        currency:
+          type: string
+        sourceAccountId:
+          type: string
+        pickupCode:
+          $ref: '#/components/schemas/CashVoucher'
+        expiresAt:
+          type: string
+          format: date-time
+        creationDate:
+          type: string
+          format: date-time
+        pickedUpAt:
+          type: string
+          format: date-time
+          nullable: true
+        settledAt:
+          type: string
+          format: date-time
+          nullable: true
+        failureReason:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        agentId:
+          type: string
+          nullable: true
+          description: Agent (network/partner) identifier.
+        agentName:
+          type: string
+          nullable: true
+          description: Agent (network/partner) name.
+        instructions:
+          type: string
+          nullable: true
+          description: Human-readable instructions for pickup at the agent.
+        locatorUrl:
+          type: string
+          nullable: true
+          description: Optional URL to the agent store locator.
+      additionalProperties: false
+    WebhookEventData:
+      type: object
+      description: Webhook event payload container.
+      required:
+      - object
+      properties:
+        object:
+          description: Event resource payload.
+          oneOf:
+          - $ref: '#/components/schemas/WebhookPaymentUpdate'
+          - $ref: '#/components/schemas/PayoutResponse'
+          - $ref: '#/components/schemas/CashWithdrawalResponse'
+    WebhookEvent:
+      type: object
+      description: 'Generic webhook event envelope. Dinaria sends different event
+        types to the same webhook URL.
+
+
+        Webhook deliveries are at-least-once. Your receiver must be idempotent.
+
+        '
+      required:
+      - eventId
+      - type
+      - createdAt
+      - data
+      properties:
+        eventId:
+          type: string
+          description: Unique identifier for the event. Use to deduplicate deliveries.
+          example: evt_123456
+        type:
+          type: string
+          description: Event type.
+          enum:
+          - payment.status_changed
+          - payout.created
+          - payout.succeeded
+          - payout.failed
+          - payout.cancelled
+          - cash.withdrawal.created
+          - cash.withdrawal.picked_up
+          - cash.withdrawal.settled
+          - cash.withdrawal.expired
+          - cash.withdrawal.cancelled
+          - cash.withdrawal.failed
+        createdAt:
+          type: string
+          format: date-time
+          description: Event creation time.
+        data:
+          $ref: '#/components/schemas/WebhookEventData'
+    Account:
+      type: object
+      description: Represents a prefunded account that can be used as a source of
+        funds.
+      properties:
+        accountId:
+          type: string
+          example: acc_brl_001
+        type:
+          type: string
+          enum:
+          - prefunded
+          example: prefunded
+        currency:
+          type: string
+          example: USD
+        isDefault:
+          type: boolean
+          example: true
+        status:
+          type: string
+          enum:
+          - active
+          - inactive
+          example: active
+        createdAt:
+          type: string
+          format: date-time
+    AccountsListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Account'
+    AccountBalanceResponse:
+      type: object
+      description: Balance information for a prefunded account.
+      properties:
+        accountId:
+          type: string
+          example: acc_brl_001
+        currency:
+          type: string
+          example: USD
+        available:
+          type: string
+          example: '50000.00'
+        pending:
+          type: string
+          example: '1200.00'
+        reserved:
+          type: string
+          example: '3000.00'
+        updatedAt:
+          type: string
+          format: date-time
+    FxQuoteRequest:
+      type: object
+      description: 'Creates a foreign exchange (FX) quote for a cross-currency payout.
+
+
+        Use `amountType` to indicate whether `amount` is the source amount to be debited
+        or the destination amount the customer should receive.
+
+
+        A quote locks the rate until `expiresAt`.'
+      required:
+      - destinationCurrency
+      - amount
+      - amountType
+      properties:
+        sourceAccountId:
+          type: string
+          description: Prefunded account to be debited. If omitted, Dinaria uses the
+            default account for the inferred source currency.
+        destinationCurrency:
+          type: string
+          example: MXN
+        amount:
+          type: string
+          description: Decimal amount as string.
+          example: '20000.00'
+        amountType:
+          type: string
+          enum:
+          - source
+          - destination
+          description: Whether `amount` is in the source currency (debited) or destination
+            currency (received).
+          example: destination
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+    FxQuoteResponse:
+      type: object
+      description: Represents an FX quote that can be used when creating a payout.
+      properties:
+        quoteId:
+          type: string
+          example: fx_123
+        sourceAccountId:
+          type: string
+          example: acc_brl_001
+        sourceCurrency:
+          type: string
+          example: USD
+        destinationCurrency:
+          type: string
+          example: MXN
+        rate:
+          type: string
+          description: FX rate applied from source to destination.
+          example: '17.50'
+        sourceAmount:
+          type: string
+          example: '1142.86'
+        destinationAmount:
+          type: string
+          example: '20000.00'
+        feeAmount:
+          type: string
+          nullable: true
+          example: '0.00'
+        feeCurrency:
+          type: string
+          nullable: true
+          example: USD
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    CustomerBalanceResponse:
+      type: object
+      description: Virtual balance for a customer account.
+      properties:
+        customerId:
+          type: string
+          example: cust_12345
+        currency:
+          type: string
+          example: ARS
+        available:
+          type: string
+          description: Funds available for payouts right now.
+          example: '5000.00'
+        pending:
+          type: string
+          description: Funds tied to in-flight payouts or unconfirmed cash-ins.
+          example: '500.00'
+        reserved:
+          type: string
+          description: Funds reserved for other purposes.
+          example: '0.00'
+        updatedAt:
+          type: string
+          format: date-time
+    DepositDetailsResponse:
+      type: object
+      description: >
+        Destination details the customer should use to fund their virtual account.
+        Argentina: CBU transfer with a reference code in the description.
+        Brazil: PIX transfer with a reference code in the PIX message.
+      properties:
+        method:
+          type: string
+          enum:
+          - bank_transfer
+          - pix
+          description: Deposit method for this country.
+        currency:
+          type: string
+          description: Currency to deposit (ARS or BRL).
+        cbu:
+          type: string
+          nullable: true
+          description: Destination CBU — Argentina only.
+        alias:
+          type: string
+          nullable: true
+          description: Human-friendly CBU alias — Argentina only.
+        pixKey:
+          type: string
+          nullable: true
+          description: Destination PIX key — Brazil only.
+        pixKeyType:
+          type: string
+          nullable: true
+          description: PIX key type (cpf, cnpj, phone, email, random) — Brazil only.
+        reference:
+          type: string
+          description: >
+            Reference code the customer must include in the transfer description
+            (concepto for CBU, mensagem for PIX). Used to attribute the deposit
+            to the correct customer virtual account.
+          example: REF-cust_abc123
+        instructions:
+          type: string
+          description: Human-readable instructions to display to the customer.
+  responses:
+    Unauthorized:
+      description: Missing or invalid API key.
+      headers:
+        Request-Id:
+          $ref: '#/components/headers/Request-Id'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            unauthorized:
+              value:
+                error:
+                  code: unauthorized
+                  message: Missing or invalid API key.
+                  requestId: req_01HX9K2X2Z0V7K0M2S2Y8A1B2C
+    NotFound:
+      description: Resource not found.
+      headers:
+        Request-Id:
+          $ref: '#/components/headers/Request-Id'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            not_found:
+              value:
+                error:
+                  code: not_found
+                  message: Resource not found.
+                  requestId: req_01HX9K2X2Z0V7K0M2S2Y8A1B2C
+    BadRequest:
+      description: Invalid request (malformed JSON, missing/invalid parameters).
+      headers:
+        Request-Id:
+          $ref: '#/components/headers/Request-Id'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalid_request:
+              value:
+                error:
+                  code: invalid_request
+                  message: Invalid request payload.
+                  param: amount
+                  requestId: req_01HX9K2X2Z0V7K0M2S2Y8A1B2C
+    Forbidden:
+      description: The API key is valid but does not have permission to perform this
+        operation.
+      headers:
+        Request-Id:
+          $ref: '#/components/headers/Request-Id'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            forbidden:
+              value:
+                error:
+                  code: forbidden
+                  message: You are not allowed to perform this operation.
+                  requestId: req_01HX9K2X2Z0V7K0M2S2Y8A1B2C
+    Conflict:
+      description: Conflict with current state or idempotency rules.
+      headers:
+        Request-Id:
+          $ref: '#/components/headers/Request-Id'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            idempotency_conflict:
+              value:
+                error:
+                  code: idempotency_key_reused
+                  message: The Idempotency-Key was reused with a different request
+                    payload.
+                  requestId: req_01HX9K2X2Z0V7K0M2S2Y8A1B2C
+    UnprocessableEntity:
+      description: Request is well-formed but failed business validation.
+      headers:
+        Request-Id:
+          $ref: '#/components/headers/Request-Id'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            validation_failed:
+              value:
+                error:
+                  code: validation_failed
+                  message: Currency is not supported for this country.
+                  param: currency
+                  requestId: req_01HX9K2X2Z0V7K0M2S2Y8A1B2C
+    TooManyRequests:
+      description: Too many requests. Retry later.
+      headers:
+        Request-Id:
+          $ref: '#/components/headers/Request-Id'
+        Retry-After:
+          description: Number of seconds to wait before retrying.
+          schema:
+            type: integer
+          example: 2
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            rate_limited:
+              value:
+                error:
+                  code: rate_limited
+                  message: Too many requests. Please retry later.
+                  requestId: req_01HX9K2X2Z0V7K0M2S2Y8A1B2C
+    InternalServerError:
+      description: Unexpected internal error.
+      headers:
+        Request-Id:
+          $ref: '#/components/headers/Request-Id'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            internal_error:
+              value:
+                error:
+                  code: internal_error
+                  message: An unexpected error occurred.
+                  requestId: req_01HX9K2X2Z0V7K0M2S2Y8A1B2C
+    BadGateway:
+      description: Upstream dependency error.
+      headers:
+        Request-Id:
+          $ref: '#/components/headers/Request-Id'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            upstream_error:
+              value:
+                error:
+                  code: upstream_error
+                  message: A downstream provider returned an error.
+                  requestId: req_01HX9K2X2Z0V7K0M2S2Y8A1B2C
+    ServiceUnavailable:
+      description: Service temporarily unavailable. Retry later.
+      headers:
+        Request-Id:
+          $ref: '#/components/headers/Request-Id'
+        Retry-After:
+          description: Number of seconds to wait before retrying.
+          schema:
+            type: integer
+          example: 5
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            temporarily_unavailable:
+              value:
+                error:
+                  code: temporarily_unavailable
+                  message: Service temporarily unavailable. Please retry later.
+                  requestId: req_01HX9K2X2Z0V7K0M2S2Y8A1B2C
+    GatewayTimeout:
+      description: Upstream timeout.
+      headers:
+        Request-Id:
+          $ref: '#/components/headers/Request-Id'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            timeout:
+              value:
+                error:
+                  code: timeout
+                  message: The request timed out. Please retry.
+                  requestId: req_01HX9K2X2Z0V7K0M2S2Y8A1B2C
+paths:
+  /payments:
+    post:
+      tags:
+      - Payments
+      summary: Create a payment
+      externalDocs:
+        description: Payments best practices
+        url: https://docs.dinaria.com/guides/payments/best-practices
+      description: 'Creates a new payment and starts a redirect-based checkout flow.
+
+
+        After creating the payment, the API returns an `actionUrl` where the customer
+
+        must be redirected to complete the payment.
+
+
+        Payments are single-use. If a payment is cancelled or expired, a new payment
+
+        must be created.
+
+
+        Redirects to `successUrl` or `cancelUrl` do not guarantee final payment status.
+
+        Always confirm the result using webhooks or by retrieving the payment.
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+            examples:
+              create_payment:
+                summary: Create a payment
+                value:
+                  externalId: ORD-1001
+                  amount: '150.00'
+                  currency: BRL
+                  paymentMethods:
+                  - pm_card
+                  - pm_wallet
+                  successUrl: https://merchant.example/success
+                  cancelUrl: https://merchant.example/cancel
+                  expiration: '2026-01-15T00:00:00Z'
+                  metadata:
+                    orderId: ORD-1001
+                    cartId: CART-7788
+                  customer:
+                    firstName: João
+                    lastName: Silva
+                    email: joao.silva@example.com
+                    country: BR
+                    state: BR-SP
+                    city: São Paulo
+                    address: Avenida Paulista 1000
+                    zipcode: '01310-100'
+      responses:
+        '200':
+          description: Payment successfully created.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+              examples:
+                created:
+                  value:
+                    transactionId: trx_123456
+                    externalId: ORD-1001
+                    status: started
+                    amount: '150.00'
+                    currency: BRL
+                    creationDate: '2026-01-14T06:30:00Z'
+                    actionUrl: https://pay.tuservicio.com/checkout/trx_123456
+                    expirationDate: '2026-01-15T00:00:00Z'
+                    metadata:
+                      orderId: ORD-1001
+                      cartId: CART-7788
+                    paymentMethods:
+                    - pm_card
+                    - pm_wallet
+                    customer:
+                      firstName: João
+                      lastName: Silva
+                      email: joao.silva@example.com
+                      country: BR
+                      state: BR-SP
+                      city: São Paulo
+                      address: Avenida Paulista 1000
+                      zipcode: '01310-100'
+        '400':
+          description: Invalid request.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_request:
+                  value:
+                    error:
+                      code: invalid_request
+                      message: Invalid request payload.
+                      param: amount
+                      requestId: req_01HX9K2X2Z0V7K0M2S2Y8A1B2C
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /payments/{transactionId}:
+    get:
+      tags:
+      - Payments
+      summary: Retrieve a payment
+      description: 'Retrieves the current state of a payment.
+
+
+        This endpoint can be used to:
+
+        - Check the payment status after a customer redirect
+
+        - Reconcile payments if webhooks are delayed
+
+        - Support operational and audit use cases
+
+
+        Do not poll aggressively. Webhooks are the recommended mechanism to track
+
+        final payment states.
+
+
+        The response returns the full payment object, including `metadata` and `externalId`.
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/TransactionIdPath'
+      responses:
+        '200':
+          description: Payment details.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+              examples:
+                confirmed:
+                  value:
+                    transactionId: trx_123456
+                    externalId: ORD-1001
+                    status: confirmed
+                    amount: '150.00'
+                    currency: BRL
+                    creationDate: '2026-01-14T06:30:00Z'
+                    confirmationDate: '2026-01-14T06:33:12Z'
+                    actionUrl: https://pay.tuservicio.com/checkout/trx_123456
+                    expirationDate: '2026-01-15T00:00:00Z'
+                    metadata:
+                      orderId: ORD-1001
+                      cartId: CART-7788
+                    paymentMethods:
+                    - pm_card
+                    customer:
+                      firstName: João
+                      lastName: Silva
+                      email: joao.silva@example.com
+                      country: BR
+                      state: BR-SP
+                      city: São Paulo
+                      address: Avenida Paulista 1000
+                      zipcode: '01310-100'
+                    paid: false
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /payment-methods:
+    get:
+      tags:
+      - Payments
+      summary: List payment methods
+      description: 'Returns the available payment methods based on country,
+
+        currency, and type.
+
+
+        Use the returned `id` values in `paymentMethods` when creating a payment.
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/CountryQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/TypeQuery'
+      responses:
+        '200':
+          description: List of available payment methods.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentMethod'
+              examples:
+                methods:
+                  value:
+                  - id: pm_card
+                    name: Card
+                    country: BR
+                    currency: BRL
+                    type: card
+                  - id: pm_wallet
+                    name: Wallet
+                    country: BR
+                    currency: BRL
+                    type: wallet
+        '400':
+          description: Invalid request.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_filter:
+                  value:
+                    error:
+                      code: invalid_request
+                      message: Invalid query parameters.
+                      param: currency
+                      requestId: req_01HX9K2X2Z0V7K0M2S2Y8A1B2C
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /webhooks/payments:
+    post:
+      tags:
+      - Webhooks
+      summary: Register a webhook endpoint
+      externalDocs:
+        description: Webhook registration and security guide
+        url: https://docs.dinaria.com/guides/webhooks
+      description: 'Registers the URL where you want to receive payment status update
+        events.
+
+
+        This is a configuration endpoint called by the merchant.
+
+        It does not deliver events and it is not triggered automatically.
+
+
+        The webhook secret is returned only once in the response. Store it securely.
+
+        '
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookRegistrationRequest'
+            examples:
+              register:
+                value:
+                  webhookUrl: https://merchant.example/webhooks/payments
+      responses:
+        '201':
+          description: Webhook successfully registered.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookRegistrationResponse'
+              examples:
+                registered:
+                  value:
+                    webhookUrl: https://merchant.example/webhooks/payments
+                    webhookSecret: whsec_9f3c2a1b7d5e4c3a...
+                    createdAt: '2026-01-16T18:00:00Z'
+        '400':
+          description: Invalid webhook URL.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_url:
+                  value:
+                    error:
+                      code: invalid_request
+                      message: Invalid webhookUrl.
+                      param: webhookUrl
+                      requestId: req_01HX9K2X2Z0V7K0M2S2Y8A1B2C
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /webhooks/payments/rotate-secret:
+    post:
+      tags:
+      - Webhooks
+      summary: Rotate webhook secret
+      description: 'Rotates the webhook signing secret for the registered payment
+        webhook endpoint.
+
+
+        The new `webhookSecret` is returned only once. Store it securely.
+
+
+        If a grace period is enabled, signatures generated with the previous secret
+
+        may be accepted until `previousSecretExpiresAt`.
+
+        '
+      responses:
+        '200':
+          description: Secret rotated successfully.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookRotateSecretResponse'
+              examples:
+                rotated:
+                  value:
+                    webhookUrl: https://merchant.example/webhooks/payments
+                    webhookSecret: whsec_2b91d0f6a1d34f0b...
+                    rotatedAt: '2026-01-16T18:10:00Z'
+                    previousSecretExpiresAt: '2026-01-17T18:10:00Z'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /webhooks/payments/updates:
+    post:
+      tags:
+      - Webhooks
+      summary: Receive payment status updates (webhook delivery)
+      description: 'Delivery endpoint called by our platform to notify merchants when
+        a payment changes status.
+
+
+        Merchants must not call this endpoint directly.
+
+        Configure delivery by registering a webhook URL using POST /webhooks/payments.
+
+
+        Webhook deliveries are at-least-once. Your receiver must be idempotent.
+
+
+        Security:
+
+        - Validate X-Webhook-Timestamp and X-Webhook-Signature
+
+        - Signature base string: `<timestamp>.<raw_body>`
+
+        - Signature: HMAC-SHA256(webhookSecret, base string)
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/WebhookTimestampHeader'
+      - $ref: '#/components/parameters/WebhookSignatureHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+              - $ref: '#/components/schemas/WebhookPaymentUpdate'
+              - $ref: '#/components/schemas/WebhookEvent'
+              description: Dinaria webhook event payload. New integrations should
+                use the WebhookEvent envelope.
+            examples:
+              paymentStatusChanged:
+                summary: Payment status change (envelope)
+                value:
+                  eventId: evt_001
+                  type: payment.status_changed
+                  createdAt: '2026-02-25T12:00:00Z'
+                  data:
+                    object:
+                      transactionId: trx_123
+                      externalId: ORD-1001
+                      status: confirmed
+                      amount: '100.00'
+                      currency: BRL
+              payoutSucceeded:
+                summary: Payout succeeded (envelope)
+                value:
+                  eventId: evt_002
+                  type: payout.succeeded
+                  createdAt: '2026-02-25T12:05:00Z'
+                  data:
+                    object:
+                      payoutId: po_123
+                      externalId: PAYOUT-1001
+                      status: succeeded
+                      amount: '6500.00'
+                      currency: BRL
+                      sourceAccountId: acc_123
+                      rail: PIX
+                      customerId: bnf_456
+                      creationDate: '2026-02-25T12:00:00Z'
+                      completionDate: '2026-02-25T12:04:50Z'
+              cashWithdrawalPickedUp:
+                summary: Cash withdrawal picked up (envelope)
+                value:
+                  eventId: evt_003
+                  type: cash.withdrawal.picked_up
+                  createdAt: '2026-02-25T12:10:00Z'
+                  data:
+                    object:
+                      cashWithdrawalId: cwd_456
+                      externalId: CASHOUT-1001
+                      status: picked_up
+                      amount: '50.00'
+                      currency: BRL
+                      sourceAccountId: acc_123
+                      agentId: agent_oxxo
+                      agentName: OXXO
+                      pickupCode:
+                        type: numeric
+                        value: '824199'
+                        display: 824 199
+                      expiresAt: '2026-02-25T13:00:00Z'
+                      creationDate: '2026-02-25T12:00:00Z'
+                      pickedUpAt: '2026-02-25T12:09:58Z'
+                      settledAt: null
+                      failureReason: null
+                      metadata:
+                        customerId: CUST-001
+      responses:
+        '200':
+          description: Event successfully received.
+        '400':
+          description: Invalid data format.
+  /payouts:
+    post:
+      tags:
+      - Payouts
+      summary: Create a payout
+      description: 'Creates a new payout (money-out) using bank rails (e.g. ACH/WIRE).
+
+
+        For recurring payouts, create a Customer + Bank Account once and reference
+        them by ID.
+
+        For one-off payouts, you may provide an inline destination bank account.
+
+
+        Use `Idempotency-Key` to safely retry payout creation without duplicates.'
+      externalDocs:
+        description: Payouts integration guide
+        url: https://docs.dinaria.com/guides/payouts
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayoutRequest'
+            examples:
+              create_payout_by_customer:
+                summary: Create a payout using a saved customer
+                value:
+                  amount: '6500.00'
+                  currency: BRL
+                  sourceAccountId: acc_123
+                  rail: PIX
+                  customerId: cust_br_12345
+                  bankAccountId: ba_pix_67890
+                  externalId: PAYOUT-1001
+                  description: Weekly settlement
+                  metadata:
+                    invoiceId: INV-0091
+              create_payout_one_off:
+                summary: Create a one-off payout with inline destination
+                value:
+                  amount: '1200.00'
+                  currency: BRL
+                  sourceAccountId: acc_123
+                  rail: PIX
+                  destination:
+                    country: BR
+                    currency: BRL
+                    rail: PIX
+                                        accountNumber: '12345678901'
+                    accountType: other
+                    holderName: João Silva
+                  externalId: PAYOUT-1002
+                  description: One-off vendor payment
+              withQuote:
+                summary: Create payout using FX quote
+                value:
+                  fxQuoteId: fx_123
+                  sourceAccountId: acc_brl_001
+                  rail: PIX
+                  customerId: cust_br_12345
+                  externalId: PAYOUT-2001
+                  metadata:
+                    invoiceId: INV-0091
+              autoQuoteDestination:
+                summary: Create payout with auto-quote (guarantee destination amount)
+                value:
+                  sourceAccountId: acc_brl_001
+                  rail: PIX
+                  customerId: cust_br_12345
+                  amount: '20000.00'
+                  currency: BRL
+                  amountType: destination
+                  autoQuote: true
+                  externalId: PAYOUT-2002
+      responses:
+        '200':
+          description: Payout successfully created.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutResponse'
+              examples:
+                created:
+                  value:
+                    payoutId: po_br_123456
+                    externalId: PAYOUT-1001
+                    status: created
+                    amount: '6500.00'
+                    currency: BRL
+                    sourceAccountId: acc_123
+                    rail: PIX
+                    customerId: cust_br_12345
+                    bankAccountId: ba_pix_67890
+                    description: Weekly settlement
+                    metadata:
+                      invoiceId: INV-0091
+                    creationDate: '2026-02-25T12:00:00Z'
+                    completionDate: null
+                    failureReason: null
+        '400':
+          description: Invalid request.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_request:
+                  value:
+                    error:
+                      code: invalid_request
+                      message: Invalid request payload.
+                      param: amount
+                      requestId: req_01HX...
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+    get:
+      tags:
+      - Payouts
+      summary: List payouts
+      description: Returns a list of payouts. Use this endpoint to reconcile money-out
+        activity.
+      externalDocs:
+        description: Payouts guide
+        url: https://docs.dinaria.com/guides/payouts
+      parameters:
+      - in: query
+        name: externalId
+        schema:
+          type: string
+        description: Filter by merchant external id.
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - created
+          - processing
+          - succeeded
+          - failed
+          - cancelled
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      - in: query
+        name: startingAfter
+        schema:
+          type: string
+        description: Cursor for pagination.
+      responses:
+        '200':
+          description: List of payouts.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PayoutResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /payouts/{payoutId}:
+    get:
+      tags:
+      - Payouts
+      summary: Retrieve a payout
+      description: Retrieves payout details and current status.
+      parameters:
+      - name: payoutId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Dinaria payout id.
+      responses:
+        '200':
+          description: Payout details.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /payouts/{payoutId}/cancel:
+    post:
+      tags:
+      - Payouts
+      summary: Cancel a payout
+      description: Attempts to cancel a payout if it has not been processed/settled
+        yet. Eligibility depends on rail and current status.
+      parameters:
+      - name: payoutId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Payout cancelled (or cancellation accepted).
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /customers:
+    post:
+      tags:
+      - Customers
+      summary: Create a customer
+      description: Creates a customer to be used as a reusable payout destination
+        owner.
+      externalDocs:
+        description: Customers guide
+        url: https://docs.dinaria.com/guides/payouts/customers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerRequest'
+            examples:
+              create_customer:
+                summary: Create a customer
+                value:
+                  type: individual
+                  name: João Silva
+                  email: joao.silva@example.com
+                  country: BR
+                  metadata:
+                    customerId: CUST-001
+      responses:
+        '201':
+          description: Customer successfully created.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+              examples:
+                created:
+                  value:
+                    customerId: cust_br_12345
+                    type: individual
+                    name: João Silva
+                    email: joao.silva@example.com
+                    country: BR
+                    defaultBankAccountId: null
+                    metadata:
+                      customerId: CUST-001
+                    createdAt: '2026-02-25T12:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    get:
+      tags:
+      - Customers
+      summary: List customers
+      description: Returns a list of customers.
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      - in: query
+        name: startingAfter
+        schema:
+          type: string
+        description: Cursor for pagination.
+      responses:
+        '200':
+          description: List of customers.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CustomerResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /customers/{customerId}:
+    get:
+      tags:
+      - Customers
+      summary: Retrieve a customer
+      description: Retrieves customer details.
+      parameters:
+      - name: customerId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Customer details.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /customers/{customerId}/bank-accounts:
+    post:
+      tags:
+      - Customers
+      summary: Add a bank account to a customer
+      description: Adds a bank account for a customer. Use the returned bankAccountId
+        in payouts.
+      parameters:
+      - name: customerId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique identifier of the customer.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BankAccountRequest'
+            examples:
+              add_bank_account:
+                summary: Add a bank account
+                value:
+                  country: BR
+                  currency: BRL
+                  rail: PIX
+                                    accountNumber: '12345678901'
+                  accountType: other
+                  holderName: João Silva
+      responses:
+        '201':
+          description: Bank account successfully created.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankAccountResponse'
+              examples:
+                created:
+                  value:
+                    bankAccountId: ba_pix_67890
+                    customerId: cust_br_12345
+                    country: BR
+                    currency: BRL
+                    rail: PIX
+                    routingNumberLast4: '0021'
+                    accountNumberLast4: '6789'
+                    ibanLast4: null
+                    accountType: other
+                    holderName: João Silva
+                    metadata: {}
+                    createdAt: '2026-02-25T12:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    get:
+      tags:
+      - Customers
+      summary: List bank accounts for a customer
+      description: Returns bank accounts associated with the customer.
+      parameters:
+      - name: customerId
+        in: path
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      - in: query
+        name: startingAfter
+        schema:
+          type: string
+        description: Cursor for pagination.
+      responses:
+        '200':
+          description: List of bank accounts.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BankAccountResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /cash/agents:
+    get:
+      tags:
+      - Cash
+      summary: List cash-out agents
+      description: 'Returns the list of supported cash-out partner agents/networks.
+
+        This endpoint avoids managing per-location directories; each agent typically
+        represents a large retail network.
+
+        '
+      responses:
+        '200':
+          description: List of agents.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CashAgentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /cash/withdrawals:
+    post:
+      tags:
+      - Cash
+      summary: Create a cash withdrawal (cash-out)
+      description: Creates a cash withdrawal instruction (cash-out) through a partner
+        agent network and returns a pickup code.
+      operationId: createCashWithdrawal
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CashWithdrawalRequest'
+      responses:
+        '200':
+          description: cashWithdrawal instruction created successfully.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashWithdrawalResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags:
+      - Cash
+      summary: List cash withdrawals
+      description: Returns a list of cashWithdrawal instructions.
+      operationId: listCashWithdrawals
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Filter by status.
+      - name: externalId
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Filter by externalId.
+      responses:
+        '200':
+          description: List of cashWithdrawal instructions.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CashWithdrawalResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+  /cash/withdrawals/{cashWithdrawalId}:
+    get:
+      tags:
+      - Cash
+      summary: Get a cash withdrawal
+      operationId: getCashWithdrawal
+      parameters:
+      - name: cashWithdrawalId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Cash withdrawal identifier.
+      responses:
+        '200':
+          description: cashWithdrawal details.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashWithdrawalResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+  /cash/withdrawals/{cashWithdrawalId}/cancel:
+    post:
+      tags:
+      - Cash
+      summary: Cancel a cash withdrawal
+      description: Cancels a cashWithdrawal instruction if it has not been completed.
+      operationId: cancelCashWithdrawal
+      parameters:
+      - name: cashWithdrawalId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Cash withdrawal identifier.
+      responses:
+        '200':
+          description: cashWithdrawal cancelled.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashWithdrawalResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+  /accounts:
+    get:
+      tags:
+      - Accounts
+      summary: List accounts
+      description: Returns the prefunded accounts available to the authenticated merchant.
+        Use the returned accountId as sourceAccountId for payouts and FX quotes.
+      responses:
+        '200':
+          description: List of accounts.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountsListResponse'
+              examples:
+                accounts:
+                  value:
+                    data:
+                    - accountId: acc_brl_001
+                      type: prefunded
+                      currency: BRL
+                      isDefault: true
+                      status: active
+                      createdAt: '2026-02-25T12:00:00Z'
+                    - accountId: acc_brl_002
+                      type: prefunded
+                      currency: BRL
+                      isDefault: false
+                      status: active
+                      createdAt: '2026-02-25T12:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /accounts/{accountId}/balance:
+    get:
+      tags:
+      - Accounts
+      summary: Retrieve account balance
+      description: Returns balance details for a prefunded account.
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique identifier of the account.
+      responses:
+        '200':
+          description: Account balance details.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountBalanceResponse'
+              examples:
+                balance:
+                  value:
+                    accountId: acc_brl_001
+                    currency: BRL
+                    available: '50000.00'
+                    pending: '1200.00'
+                    reserved: '3000.00'
+                    updatedAt: '2026-02-25T12:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /fx/quotes:
+    post:
+      tags:
+      - FX
+      summary: Create FX quote
+      description: Creates an FX quote for a cross-currency payout. Quotes are time-limited
+        and lock the conversion rate until expiresAt.
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FxQuoteRequest'
+            examples:
+              destination_amount:
+                summary: Guarantee destination amount
+                value:
+                  sourceAccountId: acc_brl_001
+                  destinationCurrency: MXN
+                  amount: '20000.00'
+                  amountType: destination
+              source_amount:
+                summary: Debit fixed source amount
+                value:
+                  sourceAccountId: acc_brl_001
+                  destinationCurrency: MXN
+                  amount: '1000.00'
+                  amountType: source
+      responses:
+        '200':
+          description: FX quote created.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FxQuoteResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /customers/{customerId}/balance:
+    get:
+      tags:
+      - Customers
+      summary: Get customer balance
+      description: Returns the current virtual balance for a customer (available, pending, reserved).
+      parameters:
+      - name: customerId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique customer identifier.
+      responses:
+        '200':
+          description: Customer balance.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerBalanceResponse'
+              examples:
+                argentina:
+                  summary: Argentina (ARS)
+                  value:
+                    customerId: cust_br_12345
+                    currency: ARS
+                    available: '5000.00'
+                    pending: '500.00'
+                    reserved: '0.00'
+                    updatedAt: '2026-02-25T12:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /customers/{customerId}/payments:
+    get:
+      tags:
+      - Customers
+      summary: List customer payments
+      description: Returns cash-in payments associated with a customer. Ordered by most recent first.
+      parameters:
+      - name: customerId
+        in: path
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - started
+          - confirmed
+          - cancelled
+          - expired
+        description: Filter by payment status.
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      - in: query
+        name: startingAfter
+        schema:
+          type: string
+        description: Cursor for pagination (payment transactionId).
+      responses:
+        '200':
+          description: List of payments.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /customers/{customerId}/payouts:
+    get:
+      tags:
+      - Customers
+      summary: List customer payouts
+      description: Returns payouts (cash-outs) associated with a customer. Ordered by most recent first.
+      parameters:
+      - name: customerId
+        in: path
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - pending
+          - completed
+          - failed
+          - cancelled
+        description: Filter by payout status.
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      - in: query
+        name: startingAfter
+        schema:
+          type: string
+        description: Cursor for pagination (payout ID).
+      responses:
+        '200':
+          description: List of payouts.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PayoutResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /customers/{customerId}/deposit-details:
+    get:
+      tags:
+      - Customers
+      summary: Get deposit details
+      description: >
+        Returns the deposit destination a customer must use to fund their virtual account.
+        Argentina: Dinaria CBU + reference code to include in the transfer description (concepto).
+        Brazil: Dinaria PIX key + reference code to include in the PIX message (mensagem).
+        The reference code is essential — it is how Dinaria attributes the incoming transfer
+        to the correct customer virtual account.
+      parameters:
+      - name: customerId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Deposit details.
+          headers:
+            Request-Id:
+              $ref: '#/components/headers/Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositDetailsResponse'
+              examples:
+                brazil:
+                  summary: Brazil — PIX transfer
+                  value:
+                    method: pix
+                    currency: BRL
+                    cbu: null
+                    alias: null
+                    pixKey: pagamentos@dinaria.com
+                    pixKeyType: email
+                    reference: REF-cust_br_abc123
+                    instructions: >
+                      Send BRL via PIX to the above key and include the reference
+                      code in the PIX message (mensagem). Your balance will be
+                      credited within seconds.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'

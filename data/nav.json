@@ -1,0 +1,84 @@
+{
+  "argentina": [
+    { "title": "Overview",            "file": "content/argentina/00_overview.md" },
+    { "title": "Getting Started",     "file": "content/argentina/01_getting_started.md" },
+    {
+      "title": "Guides",
+      "children": [
+        { "title": "Quickstart",              "file": "content/argentina/02_quickstart_first_payment.md" },
+        { "title": "Payment Lifecycle",       "file": "content/argentina/03_payment_lifecycle_states.md" },
+        { "title": "Payments Overview",       "file": "content/argentina/04_payments_overview.md" },
+        { "title": "Create Payments",         "file": "content/argentina/05_payments_create.md" },
+        { "title": "Redirect Flow",           "file": "content/argentina/06_payments_redirect_flow.md" },
+        { "title": "Retrieve a Payment",      "file": "content/argentina/07_payments_retrieve.md" },
+        { "title": "Errors & Retries",        "file": "content/argentina/12_errors_and_retries.md" },
+        { "title": "Best Practices",          "file": "content/argentina/14_payment_best_practices.md" },
+        { "title": "Step-by-Step Example",    "file": "content/argentina/15_step_by_step_payment_example.md" },
+        { "title": "Merchant Tools",          "file": "content/argentina/tools.md" }
+      ]
+    },
+    {
+      "title": "Payouts",
+      "children": [
+        { "title": "Payout Overview",         "file": "content/argentina/16_payouts_overview.md" },
+        { "title": "Create a Payout",         "file": "content/argentina/17_payouts_create.md" },
+        { "title": "Retrieve & List Payouts", "file": "content/argentina/18_payouts_retrieve.md" }
+      ]
+    },
+    {
+      "title": "Customer Accounts",
+      "children": [
+        { "title": "Customers",               "file": "content/argentina/19_customers.md" },
+        { "title": "Accounts & Balance",      "file": "content/argentina/20_accounts.md" },
+        { "title": "Virtual Accounts",        "file": "content/argentina/21_virtual_accounts.md" },
+        { "title": "Customer Balance",        "file": "content/argentina/22_customer_balance.md" },
+        { "title": "Customer Payments",       "file": "content/argentina/23_customer_payments.md" },
+        { "title": "Customer Payouts",        "file": "content/argentina/24_customer_payouts.md" },
+        { "title": "Deposit Details",         "file": "content/argentina/25_customer_deposit_details.md" }
+      ]
+    },
+    { "title": "Data Formats",        "file": "content/argentina/13_data_formats_iso.md" },
+    {
+      "title": "Webhooks",
+      "children": [
+        { "title": "Overview",                "file": "content/argentina/08_webhooks_overview.md" },
+        { "title": "Registration",            "file": "content/argentina/09_webhooks_registration.md" },
+        { "title": "Receiving",               "file": "content/argentina/10_webhooks_receiving.md" },
+        { "title": "Security",                "file": "content/argentina/13_webhooks_security.md" },
+        { "title": "Verification Examples",   "file": "content/argentina/webkhooks-vexamples.md" },
+        { "title": "Rotate Secret",           "file": "content/argentina/11_rotate-webhook-secret.md" },
+        { "title": "Best Practices",          "file": "content/argentina/11_webhooks_best_practices.md" }
+      ]
+    }
+  ],
+
+  "brazil": [
+    { "title": "Overview",            "file": "content/brazil/00_overview.md" },
+    { "title": "Getting Started",     "file": "content/brazil/01_getting_started.md" },
+    { "title": "Quickstart",          "file": "content/brazil/02_quickstart.md" },
+    { "title": "Payment Lifecycle",   "file": "content/brazil/03_payment_lifecycle.md" },
+    { "title": "Create Payments",     "file": "content/brazil/05_payments_create.md" },
+    { "title": "Retrieve Payments",   "file": "content/brazil/07_payments_retrieve.md" },
+    {
+      "title": "Payouts",
+      "children": [
+        { "title": "Payout Overview",         "file": "content/brazil/08_payouts_overview.md" },
+        { "title": "Create a Payout",         "file": "content/brazil/09_payouts_create.md" },
+        { "title": "Retrieve & List Payouts", "file": "content/brazil/10_payouts_retrieve.md" }
+      ]
+    },
+    {
+      "title": "Customer Accounts",
+      "children": [
+        { "title": "Customers",               "file": "content/brazil/11_customers.md" },
+        { "title": "Accounts & Balance",      "file": "content/brazil/12_accounts.md" },
+        { "title": "Virtual Accounts",        "file": "content/brazil/14_virtual_accounts.md" },
+        { "title": "Customer Balance",        "file": "content/brazil/15_customer_balance.md" },
+        { "title": "Customer Payments",       "file": "content/brazil/16_customer_payments.md" },
+        { "title": "Customer Payouts",        "file": "content/brazil/17_customer_payouts.md" },
+        { "title": "Deposit Details",         "file": "content/brazil/18_customer_deposit_details.md" }
+      ]
+    },
+    { "title": "Data Formats",        "file": "content/brazil/13_data_formats.md" }
+  ]
+}
