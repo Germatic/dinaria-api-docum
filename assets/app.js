@@ -22,11 +22,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   applyScope(currentScope);
   renderNav(currentScope);
 
-  // Load page from hash if present
+  // Load page from hash, or default to the scope's Overview
   if (hash && hash.includes('/')) {
     const file = hash.replace(/^(argentina|brazil)\//, (_, s) => `content/${s}/`);
-    const title = labelFromFile(file);
-    loadPage(file, title);
+    loadPage(file, labelFromFile(file));
+  } else {
+    loadPage(`content/${currentScope}/00_overview.md`, 'Overview');
   }
 
   window.addEventListener('hashchange', onHashChange);
@@ -49,12 +50,9 @@ function setScope(scope) {
   localStorage.setItem('dinaria-scope', scope);
   applyScope(scope);
   renderNav(scope);
-  // Always go to the Overview of the new scope when switching —
+  // Always land on the Overview of the new scope —
   // filenames differ between scopes so we cannot map them 1:1.
-  currentFile = null;
-  history.replaceState(null, '', '#');
-  document.getElementById('content-inner').innerHTML = welcomeHTML();
-  document.getElementById('topbar-title').textContent = 'Dinaria API Docs';
+  loadPage(`content/${scope}/00_overview.md`, 'Overview');
 }
 
 function applyScope(scope) {
@@ -185,23 +183,7 @@ function onHashChange() {
 
 /* ── Home ───────────────────────────────────────────────────────── */
 function goHome() {
-  currentFile = null;
-  history.replaceState(null, '', '#');
-  document.getElementById('content-inner').innerHTML = welcomeHTML();
-  document.getElementById('topbar-title').textContent = 'Dinaria API Docs';
-  markActive(null);
-}
-
-function welcomeHTML() {
-  return `<div class="welcome">
-    <h1>Dinaria API Documentation</h1>
-    <p>The Dinaria API lets you create, manage, and track payments through secure, backend-driven flows.</p>
-    <p>Use the <strong>Argentina</strong> or <strong>Brazil</strong> chip to switch scopes. Each scope shows the relevant endpoints, identifiers (CBU/CVU for Argentina, PIX keys for Brazil), and currency (ARS / BRL).</p>
-    <div class="welcome-links">
-      <a href="#" onclick="setScope('argentina');loadPage('content/argentina/01_getting_started.md','Getting Started');return false;" class="welcome-btn">Get started &mdash; Argentina</a>
-      <a href="#" onclick="setScope('brazil');loadPage('content/brazil/01_getting_started.md','Getting Started');return false;" class="welcome-btn brazil">Get started &mdash; Brazil</a>
-    </div>
-  </div>`;
+  loadPage(`content/${currentScope}/00_overview.md`, 'Overview');
 }
 
 /* ── Mobile sidebar ─────────────────────────────────────────────── */

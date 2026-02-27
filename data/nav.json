@@ -55,10 +55,15 @@
   "brazil": [
     { "title": "Overview",            "file": "content/brazil/00_overview.md" },
     { "title": "Getting Started",     "file": "content/brazil/01_getting_started.md" },
-    { "title": "Quickstart",          "file": "content/brazil/02_quickstart.md" },
-    { "title": "Payment Lifecycle",   "file": "content/brazil/03_payment_lifecycle.md" },
-    { "title": "Create Payments",     "file": "content/brazil/05_payments_create.md" },
-    { "title": "Retrieve Payments",   "file": "content/brazil/07_payments_retrieve.md" },
+    {
+      "title": "Guides",
+      "children": [
+        { "title": "Quickstart",              "file": "content/brazil/02_quickstart.md" },
+        { "title": "Payment Lifecycle",       "file": "content/brazil/03_payment_lifecycle.md" },
+        { "title": "Create Payments",         "file": "content/brazil/05_payments_create.md" },
+        { "title": "Retrieve Payments",       "file": "content/brazil/07_payments_retrieve.md" }
+      ]
+    },
     {
       "title": "Payouts",
       "children": [
