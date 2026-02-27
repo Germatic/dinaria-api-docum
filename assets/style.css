@@ -228,10 +228,10 @@ body {
 
 /* ─── Top bar (mobile) ─────────────────────────────────────────────── */
 .topbar {
-  display: none;
+  display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 16px;
+  padding: 0 20px;
   height: var(--topbar-h);
   background: white;
   border-bottom: 1px solid var(--border);
@@ -241,11 +241,13 @@ body {
 }
 
 .menu-toggle {
+  display: none;
   background: none;
   border: none;
   cursor: pointer;
   color: var(--text-muted);
   padding: 4px;
+  font-size: 18px;
 }
 
 .topbar-title {
@@ -257,7 +259,33 @@ body {
   text-overflow: ellipsis;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .topbar-scope { display: flex; gap: 6px; }
+
+.spec-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid var(--border);
+  background: #f8fafc;
+  color: var(--text-muted);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.spec-btn:hover { background: #f1f5f9; color: #0f172a; border-color: #cbd5e1; }
+.spec-btn.arg  { border-color: #bfdbfe; color: #1d4ed8; background: #eff6ff; }
+.spec-btn.arg:hover { background: #dbeafe; }
+.spec-btn.bra  { border-color: #bbf7d0; color: #15803d; background: #f0fdf4; }
+.spec-btn.bra:hover { background: #dcfce7; }
 
 /* ─── Content area ─────────────────────────────────────────────────── */
 .content {
@@ -478,8 +506,11 @@ body {
   .main-wrap {
     margin-left: 0;
   }
-  .topbar {
-    display: flex;
+  .menu-toggle {
+    display: block;
+  }
+  .spec-btn {
+    display: none;
   }
   .overlay.visible {
     display: block;

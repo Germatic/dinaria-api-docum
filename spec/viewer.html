@@ -119,8 +119,9 @@
     });
   }
 
-  // Init from stored scope
-  const saved = localStorage.getItem('dinaria-scope') || 'argentina';
+  // Init: query param takes priority over localStorage
+  const params = new URLSearchParams(window.location.search);
+  const saved = params.get('scope') || localStorage.getItem('dinaria-scope') || 'argentina';
   loadSpec(saved);
 </script>
 </body>

@@ -37,9 +37,13 @@
     <header class="topbar">
       <button class="menu-toggle" id="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
       <span class="topbar-title" id="topbar-title">Dinaria API Docs</span>
-      <div class="topbar-scope">
-        <button class="chip small" id="topbar-chip-argentina" onclick="setScope('argentina')">Argentina</button>
-        <button class="chip small" id="topbar-chip-brazil" onclick="setScope('brazil')">Brazil</button>
+      <div class="topbar-actions">
+        <a href="spec/viewer.html?scope=argentina" target="_blank" class="spec-btn arg">API Spec — Argentina</a>
+        <a href="spec/viewer.html?scope=brazil"    target="_blank" class="spec-btn bra">API Spec — Brazil</a>
+        <div class="topbar-scope">
+          <button class="chip small" id="topbar-chip-argentina" onclick="setScope('argentina')">Argentina</button>
+          <button class="chip small" id="topbar-chip-brazil" onclick="setScope('brazil')">Brazil</button>
+        </div>
       </div>
     </header>
 

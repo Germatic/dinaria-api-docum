@@ -60,8 +60,14 @@
       "children": [
         { "title": "Quickstart",              "file": "content/brazil/02_quickstart.md" },
         { "title": "Payment Lifecycle",       "file": "content/brazil/03_payment_lifecycle.md" },
+        { "title": "Payments Overview",       "file": "content/brazil/04_payments_overview.md" },
         { "title": "Create Payments",         "file": "content/brazil/05_payments_create.md" },
-        { "title": "Retrieve Payments",       "file": "content/brazil/07_payments_retrieve.md" }
+        { "title": "PIX Payment Flow",        "file": "content/brazil/06_pix_payment_flow.md" },
+        { "title": "Retrieve a Payment",      "file": "content/brazil/07_payments_retrieve.md" },
+        { "title": "Errors & Retries",        "file": "content/brazil/12_errors_and_retries.md" },
+        { "title": "Best Practices",          "file": "content/brazil/14_payment_best_practices.md" },
+        { "title": "Step-by-Step Example",    "file": "content/brazil/15_step_by_step_payment_example.md" },
+        { "title": "Merchant Tools",          "file": "content/brazil/tools.md" }
       ]
     },
     {
@@ -84,6 +90,17 @@
         { "title": "Deposit Details",         "file": "content/brazil/18_customer_deposit_details.md" }
       ]
     },
-    { "title": "Data Formats",        "file": "content/brazil/13_data_formats.md" }
+    { "title": "Data Formats",        "file": "content/brazil/13_data_formats.md" },
+    {
+      "title": "Webhooks",
+      "children": [
+        { "title": "Overview",                "file": "content/brazil/19_webhooks_overview.md" },
+        { "title": "Registration",            "file": "content/brazil/20_webhooks_registration.md" },
+        { "title": "Receiving",               "file": "content/brazil/21_webhooks_receiving.md" },
+        { "title": "Security",                "file": "content/brazil/22_webhooks_security.md" },
+        { "title": "Best Practices",          "file": "content/brazil/23_webhooks_best_practices.md" },
+        { "title": "Rotate Secret",           "file": "content/brazil/25_rotate-webhook-secret.md" }
+      ]
+    }
   ]
 }
