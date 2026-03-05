@@ -1,54 +1,60 @@
 {
   "argentina": [
-    { "title": "Overview",            "file": "content/argentina/00_overview.md" },
-    { "title": "Getting Started",     "file": "content/argentina/01_getting_started.md" },
+    { "title": "Overview",              "file": "content/argentina/index.md" },
+    { "title": "Getting Started",       "file": "content/argentina/01_getting_started.md" },
     {
-      "title": "Guides",
+      "title": "Getting Started",
       "children": [
-        { "title": "Quickstart",              "file": "content/argentina/02_quickstart_first_payment.md" },
-        { "title": "Payment Lifecycle",       "file": "content/argentina/03_payment_lifecycle_states.md" },
-        { "title": "Payments Overview",       "file": "content/argentina/04_payments_overview.md" },
-        { "title": "Create Payments",         "file": "content/argentina/05_payments_create.md" },
-        { "title": "Redirect Flow",           "file": "content/argentina/06_payments_redirect_flow.md" },
-        { "title": "Retrieve a Payment",      "file": "content/argentina/07_payments_retrieve.md" },
-        { "title": "Errors & Retries",        "file": "content/argentina/12_errors_and_retries.md" },
-        { "title": "Best Practices",          "file": "content/argentina/14_payment_best_practices.md" },
-        { "title": "Step-by-Step Example",    "file": "content/argentina/15_step_by_step_payment_example.md" },
-        { "title": "Merchant Tools",          "file": "content/argentina/tools.md" },
-        { "title": "Merchant Settings",       "file": "content/argentina/26_merchant_settings.md" }
+        { "title": "Quickstart",                    "file": "content/argentina/40_quickstart.md" },
+        { "title": "15-Minute Integration",         "file": "content/argentina/41_15_minute_integration.md" },
+        { "title": "Common Pitfalls",               "file": "content/argentina/42_common_pitfalls.md" }
       ]
     },
     {
-      "title": "Payouts",
+      "title": "Core Concepts",
       "children": [
-        { "title": "Payout Overview",         "file": "content/argentina/16_payouts_overview.md" },
-        { "title": "Create a Payout",         "file": "content/argentina/17_payouts_create.md" },
-        { "title": "Retrieve & List Payouts", "file": "content/argentina/18_payouts_retrieve.md" }
+        { "title": "Money Movement Model",          "file": "content/argentina/30_money_movement_model.md" },
+        { "title": "Accounts",                      "file": "content/argentina/20_accounts.md" },
+        { "title": "Participants",                  "file": "content/argentina/31_participants.md" },
+        { "title": "FX Handling",                   "file": "content/argentina/32_fx.md" }
       ]
     },
     {
-      "title": "Customer Accounts",
+      "title": "Money In",
       "children": [
-        { "title": "Customers",               "file": "content/argentina/19_customers.md" },
-        { "title": "Accounts & Balance",      "file": "content/argentina/20_accounts.md" },
-        { "title": "Virtual Accounts",        "file": "content/argentina/21_virtual_accounts.md" },
-        { "title": "Customer Balance",        "file": "content/argentina/22_customer_balance.md" },
-        { "title": "Customer Payments",       "file": "content/argentina/23_customer_payments.md" },
-        { "title": "Customer Payouts",        "file": "content/argentina/24_customer_payouts.md" },
-        { "title": "Deposit Details",         "file": "content/argentina/25_customer_deposit_details.md" }
+        { "title": "Payments Overview",             "file": "content/argentina/04_payments_overview.md" },
+        { "title": "Payment Lifecycle",             "file": "content/argentina/03_payment_lifecycle_states.md" },
+        { "title": "Create a Payment",              "file": "content/argentina/05_payments_create.md" },
+        { "title": "Redirect Flow",                 "file": "content/argentina/06_payments_redirect_flow.md" },
+        { "title": "Retrieve a Payment",            "file": "content/argentina/07_payments_retrieve.md" },
+        { "title": "Errors & Retries",              "file": "content/argentina/12_errors_and_retries.md" },
+        { "title": "Best Practices",                "file": "content/argentina/14_payment_best_practices.md" },
+        { "title": "Step-by-Step Example",          "file": "content/argentina/15_step_by_step_payment_example.md" },
+        { "title": "Data Formats",                  "file": "content/argentina/13_data_formats_iso.md" },
+        { "title": "Merchant Tools",                "file": "content/argentina/tools.md" }
       ]
     },
-    { "title": "Data Formats",        "file": "content/argentina/13_data_formats_iso.md" },
+    {
+      "title": "Money Out",
+      "children": [
+        { "title": "Payouts Overview",              "file": "content/argentina/16_payouts_overview.md" },
+        { "title": "Create a Payout",               "file": "content/argentina/17_payouts_create.md" },
+        { "title": "Retrieve & List Payouts",       "file": "content/argentina/18_payouts_retrieve.md" },
+        { "title": "Payout Flow",                   "file": "content/argentina/33_payout_flow.md" },
+        { "title": "Cash Withdrawals",              "file": "content/argentina/34_cash_withdrawals.md" }
+      ]
+    },
     {
       "title": "Webhooks",
       "children": [
-        { "title": "Overview",                "file": "content/argentina/08_webhooks_overview.md" },
-        { "title": "Registration",            "file": "content/argentina/09_webhooks_registration.md" },
-        { "title": "Receiving",               "file": "content/argentina/10_webhooks_receiving.md" },
-        { "title": "Security",                "file": "content/argentina/13_webhooks_security.md" },
-        { "title": "Verification Examples",   "file": "content/argentina/webkhooks-vexamples.md" },
-        { "title": "Rotate Secret",           "file": "content/argentina/11_rotate-webhook-secret.md" },
-        { "title": "Best Practices",          "file": "content/argentina/11_webhooks_best_practices.md" }
+        { "title": "Overview",                      "file": "content/argentina/08_webhooks_overview.md" },
+        { "title": "Registration",                  "file": "content/argentina/09_webhooks_registration.md" },
+        { "title": "Receiving",                     "file": "content/argentina/10_webhooks_receiving.md" },
+        { "title": "Security",                      "file": "content/argentina/13_webhooks_security.md" },
+        { "title": "Verification Examples",         "file": "content/argentina/11_verification_examples.md" },
+        { "title": "Rotate Secret",                 "file": "content/argentina/11_rotate-webhook-secret.md" },
+        { "title": "Best Practices",                "file": "content/argentina/11_webhooks_best_practices.md" },
+        { "title": "Event Types",                   "file": "content/argentina/35_webhook_event_types.md" }
       ]
     }
   ],

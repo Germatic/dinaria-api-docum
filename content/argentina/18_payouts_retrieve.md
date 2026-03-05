@@ -1,3 +1,9 @@
+---
+title: Retrieve & List Payouts
+nav_order: 3
+parent: Payouts
+---
+
 # Retrieve & List Payouts
 
 ---

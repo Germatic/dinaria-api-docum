@@ -1,3 +1,9 @@
+---
+title: Quickstart First Payment
+nav_order: 4
+parent: Guides
+---
+
 # Quickstart: your first payment
 
 This quickstart creates a payment, redirects the customer to complete it, and validates the final status.

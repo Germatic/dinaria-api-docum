@@ -1,3 +1,9 @@
+---
+title: Step-by-Step Payment Example
+nav_order: 17
+parent: Guides
+---
+
 # Step-by-step payment example (for merchants)
 
 This guide shows a complete, minimal flow using curl: register webhook, create a payment,

@@ -1,3 +1,9 @@
+---
+title: Getting Started
+nav_order: 3
+parent: Guides
+---
+
 # Getting started
 
 ## Base URL

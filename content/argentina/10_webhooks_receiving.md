@@ -1,3 +1,9 @@
+---
+title: Receiving
+nav_order: 12
+parent: Webhooks
+---
+
 # Receiving payment status updates
 
 Our platform sends HTTP POST requests to your server whenever a payment changes status.

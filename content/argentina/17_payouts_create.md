@@ -1,3 +1,9 @@
+---
+title: Create a Payout
+nav_order: 11
+parent: Money Out
+---
+
 # Create a Payout
 
 `POST /payouts`
@@ -100,3 +106,16 @@ Idempotency-Key: payout-2026-02-25-order-1001
 ```
 
 Reusing the same key with an identical body returns the original payout. Reusing it with a different body returns `409 Conflict`.
+
+## FX options
+
+### Quote (locks rate)
+
+1) Create quote (`POST /fx/quotes`)
+2) Create payout with `fxQuoteId`
+
+### Auto-quote (simplest)
+
+Set `autoQuote=true` and provide `amount`, `currency`, and optionally `amountType`.
+
+See: [FX Handling](32_fx.md)

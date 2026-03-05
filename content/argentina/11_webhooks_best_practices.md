@@ -1,3 +1,9 @@
+---
+title: Webhooks Best Practices
+nav_order: 16
+parent: Webhooks
+---
+
 # Webhook best practices
 
 ## Security

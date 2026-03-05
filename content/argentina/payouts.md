@@ -1,3 +1,8 @@
+---
+title: Payouts
+nav_order: 3
+---
+
 # Payouts — Argentina
 
 Payouts let you send funds directly to customer bank accounts (CBU / CVU) in Argentina (ARS).

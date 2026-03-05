@@ -1,3 +1,9 @@
+---
+title: Rotate Secret
+nav_order: 15
+parent: Webhooks
+---
+
 # Rotate webhook secret
 
 You can rotate your webhook signing secret at any time.

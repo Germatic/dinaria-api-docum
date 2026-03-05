@@ -1,3 +1,9 @@
+---
+title: Retrieve a Payment
+nav_order: 9
+parent: Guides
+---
+
 # Retrieve a payment
 
 Use this endpoint to retrieve the current state of a payment.

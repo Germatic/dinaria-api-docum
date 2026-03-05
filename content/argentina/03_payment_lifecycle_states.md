@@ -1,3 +1,9 @@
+---
+title: Payment Lifecycle States
+nav_order: 5
+parent: Guides
+---
+
 # Payment lifecycle & states
 
 Payments move through the following states:

@@ -1,3 +1,9 @@
+---
+title: Security
+nav_order: 13
+parent: Webhooks
+---
+
 # Webhook security & signature verification
 
 All webhook events sent by our platform are signed to allow merchants to verify

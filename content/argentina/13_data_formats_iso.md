@@ -1,3 +1,8 @@
+---
+title: Data Formats
+nav_order: 7
+---
+
 # Data formats — Argentina
 
 ## Currency

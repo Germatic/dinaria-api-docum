@@ -1,6 +1,36 @@
+---
+title: Accounts & Balance
+nav_order: 1
+parent: Concepts
+---
+
 # Accounts & Balance
 
-Your **Dinaria account** holds the prefunded balance used to fund payouts. Before sending a payout, the requested amount is checked and reserved against this balance.
+Dinaria uses **Accounts** to represent where your funds live on the platform.
+
+Most merchants use **Operating Accounts**:
+
+- Payments (money-in) are credited to an operating account
+- Payouts (money-out) are debited from an operating account
+
+> **Default behavior**
+>
+> - If you omit `destinationAccountId` when creating a payment, Dinaria credits your **default operating account** for that currency.
+> - If you omit `sourceAccountId` when creating a payout, Dinaria debits your **default operating account**.
+
+---
+
+## Account types
+
+| accountType | When you would use it |
+|---|---|
+| `operating` | **Default.** Daily money-in and money-out. You can have multiple operating accounts (e.g., Payroll vs Marketplace). |
+| `reserve` | Funds held by risk/compliance rules. Typically not used for payouts directly. |
+| `fees` | (Optional) Separate bucket for fees/revenue reconciliation. |
+| `settlement` | (Optional) Funds in transit to/from external settlement rails. |
+| `onchain` | (Optional) Funds represented on blockchain (stablecoins). |
+
+For now, merchants can create **only** `operating` accounts via API.
 
 ---
 
@@ -8,11 +38,11 @@ Your **Dinaria account** holds the prefunded balance used to fund payouts. Befor
 
 `GET /accounts`
 
-Returns all prefunded accounts available to your merchant API key.
+Returns all accounts available to your merchant API key.
 
 ```http
 GET /accounts
-Authorization: Bearer sk_live_<your-merchant-key>
+Authorization: Bearer <token>
 ```
 
 ### Response
@@ -21,26 +51,45 @@ Authorization: Bearer sk_live_<your-merchant-key>
 {
   "data": [
     {
-      "accountId": "acc_ars_001",
-      "type": "prefunded",
-      "currency": "ARS",
+      "accountId": "acc_usd_main",
+      "accountType": "operating",
+      "currency": "USD",
       "isDefault": true,
       "status": "active",
-      "createdAt": "2026-01-01T00:00:00Z"
+      "name": "Main USD"
     }
   ]
 }
 ```
 
-### Account fields
+---
 
-| Field | Description |
-|-------|-------------|
-| `accountId` | Unique account identifier. Use this as `sourceAccountId` in payouts. |
-| `type` | Always `prefunded` — funds must be deposited before payouts can be made. |
-| `currency` | Currency held in this account (e.g. `ARS`). |
-| `isDefault` | Whether this is the default account for the currency. |
-| `status` | `active` or `inactive`. |
+## Create an operating account
+
+`POST /accounts`
+
+Merchants may create additional **operating** accounts (for example, `Payroll USD`), while other account types are reserved for platform/internal use.
+
+```http
+POST /accounts
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+```json
+{
+  "currency": "USD",
+  "accountType": "operating",
+  "name": "Payroll USD",
+  "externalId": "acct-payroll-001",
+  "isDefault": false
+}
+```
+
+### Notes
+
+- Only **one** account can be `isDefault=true` per currency.
+- If you create an account with `isDefault=true`, Dinaria will automatically unset the previous default account for that currency.
 
 ---
 
@@ -48,50 +97,26 @@ Authorization: Bearer sk_live_<your-merchant-key>
 
 `GET /accounts/{accountId}/balance`
 
-Returns the detailed balance breakdown for an account.
+Balances are split into:
+
+| Field | Meaning |
+|---|---|
+| `available` | Funds you can use now (e.g., to create payouts). |
+| `pending` | Incoming funds not fully settled/confirmed yet. |
+| `reserved` | Funds committed to operations in progress (e.g., payouts created but not completed). |
 
 ```http
-GET /accounts/acc_ars_001/balance
-Authorization: Bearer sk_live_<your-merchant-key>
+GET /accounts/acc_usd_main/balance
+Authorization: Bearer <token>
 ```
-
-### Response
 
 ```json
 {
-  "accountId": "acc_ars_001",
-  "currency": "ARS",
-  "available": "125000.00",
-  "pending": "3500.00",
-  "reserved": "8000.00",
-  "updatedAt": "2026-02-25T12:00:00Z"
+  "accountId": "acc_usd_main",
+  "currency": "USD",
+  "available": "50000.00",
+  "pending": "1200.00",
+  "reserved": "3000.00",
+  "updatedAt": "2026-03-01T12:00:00Z"
 }
 ```
-
-### Balance fields
-
-| Field | Description |
-|-------|-------------|
-| `available` | Funds you can use for new payouts right now. |
-| `pending` | Funds tied to payouts in `pending` or `processing` status. |
-| `reserved` | Funds reserved for other purposes (e.g. holds). |
-| `updatedAt` | When the balance was last recalculated. |
-
----
-
-## Balance behavior with payouts
-
-When you create a payout:
-
-1. The requested amount is deducted from `available` immediately.
-2. It moves to `pending` while the transfer is in progress.
-3. On **completion** the amount leaves your account permanently.
-4. On **permanent failure** (after all retries) the amount is returned to `available`.
-
-This ensures your balance always reflects the real state of your funds.
-
----
-
-## Topping up
-
-To add funds to your account, contact [support@dinaria.com](mailto:support@dinaria.com) or use the Dinaria merchant admin panel to initiate a deposit via CBU transfer to the platform's deposit account.

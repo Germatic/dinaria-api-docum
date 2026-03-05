@@ -1,3 +1,9 @@
+---
+title: Merchant Tools & Admin Pages (Sandbox)
+nav_order: 18
+parent: Guides
+---
+
 # Merchant tools & admin pages (sandbox)
 
 This guide describes the merchant‑facing tools and admin pages available in the

@@ -1,3 +1,9 @@
+---
+title: Verification Examples
+nav_order: 14
+parent: Webhooks
+---
+
 # Webhook verification examples
 
 ## Node.js

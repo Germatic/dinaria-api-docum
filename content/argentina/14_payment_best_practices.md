@@ -1,3 +1,8 @@
+---
+title: Payments Best Practices
+nav_order: 16
+parent: Guides
+---
 # Payments best practices
 
 This guide describes recommended patterns for integrating with the Payments API in a production-safe way.

@@ -1,3 +1,9 @@
+---
+title: Errors And Retries
+nav_order: 14
+parent: Guides
+---
+
 # Errors & retries
 
 ## Common HTTP status codes
