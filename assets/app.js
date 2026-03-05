@@ -10,6 +10,13 @@ let NAV = null;
 let currentScope = 'argentina';
 let currentFile  = null;
 
+/* ── Scope home page ─────────────────────────────────────────────── */
+function scopeHome(scope) {
+  return scope === 'argentina'
+    ? `content/${scope}/index.md`
+    : `content/${scope}/00_overview.md`;
+}
+
 /* ── Bootstrap ──────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
   // Resolve initial scope from hash, then localStorage, then default
@@ -27,7 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const file = hash.replace(/^(argentina|brazil)\//, (_, s) => `content/${s}/`);
     loadPage(file, labelFromFile(file));
   } else {
-    loadPage(`content/${currentScope}/00_overview.md`, 'Overview');
+    loadPage(scopeHome(currentScope), 'Overview');
   }
 
   window.addEventListener('hashchange', onHashChange);
@@ -52,7 +59,7 @@ function setScope(scope) {
   renderNav(scope);
   // Always land on the Overview of the new scope —
   // filenames differ between scopes so we cannot map them 1:1.
-  loadPage(`content/${scope}/00_overview.md`, 'Overview');
+  loadPage(scopeHome(scope), 'Overview');
 }
 
 function applyScope(scope) {
@@ -183,7 +190,7 @@ function onHashChange() {
 
 /* ── Home ───────────────────────────────────────────────────────── */
 function goHome() {
-  loadPage(`content/${currentScope}/00_overview.md`, 'Overview');
+  loadPage(scopeHome(currentScope), 'Overview');
 }
 
 /* ── Mobile sidebar ─────────────────────────────────────────────── */
