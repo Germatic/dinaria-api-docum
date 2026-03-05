@@ -14,7 +14,8 @@
         { "title": "Errors & Retries",        "file": "content/argentina/12_errors_and_retries.md" },
         { "title": "Best Practices",          "file": "content/argentina/14_payment_best_practices.md" },
         { "title": "Step-by-Step Example",    "file": "content/argentina/15_step_by_step_payment_example.md" },
-        { "title": "Merchant Tools",          "file": "content/argentina/tools.md" }
+        { "title": "Merchant Tools",          "file": "content/argentina/tools.md" },
+        { "title": "Merchant Settings",       "file": "content/argentina/26_merchant_settings.md" }
       ]
     },
     {

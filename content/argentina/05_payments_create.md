@@ -20,26 +20,42 @@ Idempotency-Key: <uuid>
   Always confirm using webhooks or `GET /payments/{transactionId}`.
 - `paymentMethods` must contain payment method **IDs** (not objects).
 
+## Request fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `amount` | string | ✅ | Decimal amount, e.g. `"1500.00"` |
+| `currency` | string | ✅ | ISO 4217 code, e.g. `"ARS"` |
+| `externalId` | string | — | Your own order reference |
+| `merchantId` | string | — | Target merchant. Set automatically from merchant-scoped key |
+| `paymentMethods` | array | — | Payment method IDs |
+| `successUrl` | string | — | Redirect on success |
+| `cancelUrl` | string | — | Redirect on cancellation |
+| `metadata` | object | — | Arbitrary key-value pairs |
+| `customer` | object | — | Customer identity (see below) |
+| `allowOverUnder` | boolean | — | Accept incoming transfers that differ slightly from the expected amount. Default: `false`. |
+
+### `allowOverUnder`
+
+When `true`, the reconciler will match an incoming Coinag transfer to this order even if the received amount is slightly above or below `amount` — useful when payers may round or banks apply small fees. Without this flag, only exact-amount matches are accepted.
+
 ## Example request
 ```json
 {
   "externalId": "ORD-1001",
-  "amount": "100.50",
-  "currency": "USD",
-  "paymentMethods": ["pm_card", "pm_wallet"],
+  "amount": "1500.00",
+  "currency": "ARS",
   "successUrl": "https://merchant.example/success",
   "cancelUrl": "https://merchant.example/cancel",
+  "allowOverUnder": true,
   "metadata": {
-    "orderId": "ORD-1001",
-    "cartId": "CART-7788"
+    "orderId": "ORD-1001"
   },
   "customer": {
-    "firstName": "John",
-    "lastName": "Doe",
-    "email": "john.doe@example.com",
-    "country": "US",
-    "state": "US-CA",
-    "city": "San Francisco"
+    "firstName": "Juan",
+    "lastName": "García",
+    "email": "juan@example.com",
+    "cuit": "20123456789"
   }
 }
 ```
