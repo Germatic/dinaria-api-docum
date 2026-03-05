@@ -1,133 +1,88 @@
-/* ── Dinaria Docs app.js ─────────────────────────────────────────────
-   Responsibilities:
-   1. Persist & apply scope (argentina / brazil) via localStorage + URL hash
-   2. Fetch nav.json and render sidebar nav for the active scope
-   3. Fetch a .md file, strip any residual front-matter, render with marked.js
-   4. Keep chips, nav links, and body class in sync
-──────────────────────────────────────────────────────────────────── */
+/* ── Dinaria API Docs — app.js ───────────────────────────────────── */
 
 let NAV = null;
-let currentScope = 'argentina';
-let currentFile  = null;
+let currentFile = null;
 
-/* ── Scope home page ─────────────────────────────────────────────── */
-function scopeHome(scope) {
-  return scope === 'argentina'
-    ? `content/${scope}/index.md`
-    : `content/${scope}/00_overview.md`;
-}
+const DEFAULT_PAGE = 'content/index.md';
 
 /* ── Bootstrap ──────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
-  // Resolve initial scope from hash, then localStorage, then default
-  const hash = decodeURIComponent(window.location.hash.slice(1));
-  if (hash.startsWith('brazil/'))   currentScope = 'brazil';
-  else if (hash.startsWith('argentina/')) currentScope = 'argentina';
-  else currentScope = localStorage.getItem('dinaria-scope') || 'argentina';
-
   NAV = await fetchNav();
-  applyScope(currentScope);
-  renderNav(currentScope);
+  renderNav();
 
-  // Load page from hash, or default to the scope's Overview
-  if (hash && hash.includes('/')) {
-    const file = hash.replace(/^(argentina|brazil)\//, (_, s) => `content/${s}/`);
-    loadPage(file, labelFromFile(file));
+  const hash = decodeURIComponent(window.location.hash.slice(1));
+  if (hash && hash.endsWith('.md')) {
+    loadPage('content/' + hash, labelFromFile(hash));
   } else {
-    loadPage(scopeHome(currentScope), 'Overview');
+    loadPage(DEFAULT_PAGE, 'Dinaria API');
   }
 
   window.addEventListener('hashchange', onHashChange);
 });
 
-/* ── Fetch nav.json ─────────────────────────────────────────────── */
+/* ── Nav fetch ──────────────────────────────────────────────────── */
 async function fetchNav() {
   try {
     const r = await fetch('data/nav.json');
     return await r.json();
   } catch (e) {
     console.error('Failed to load nav.json', e);
-    return { argentina: [], brazil: [] };
+    return [];
   }
 }
 
-/* ── Scope ──────────────────────────────────────────────────────── */
-function setScope(scope) {
-  currentScope = scope;
-  localStorage.setItem('dinaria-scope', scope);
-  applyScope(scope);
-  renderNav(scope);
-  // Always land on the Overview of the new scope —
-  // filenames differ between scopes so we cannot map them 1:1.
-  loadPage(scopeHome(scope), 'Overview');
-}
-
-function applyScope(scope) {
-  // Body class for CSS hooks
-  document.body.classList.toggle('scope-brazil', scope === 'brazil');
-  document.body.classList.toggle('scope-argentina', scope === 'argentina');
-
-  // Sidebar chips
-  document.getElementById('chip-argentina').classList.toggle('active-arg', scope === 'argentina');
-  document.getElementById('chip-brazil').classList.toggle('active-bra', scope === 'brazil');
-
-  // Topbar chips (mobile)
-  const tca = document.getElementById('topbar-chip-argentina');
-  const tcb = document.getElementById('topbar-chip-brazil');
-  if (tca) tca.classList.toggle('active-arg', scope === 'argentina');
-  if (tcb) tcb.classList.toggle('active-bra', scope === 'brazil');
-}
-
-/* ── Nav rendering ──────────────────────────────────────────────── */
-function renderNav(scope) {
+/* ── Nav render ─────────────────────────────────────────────────── */
+function renderNav() {
   const tree = document.getElementById('nav-tree');
-  const items = NAV[scope] || [];
   tree.innerHTML = '';
-
-  items.forEach(item => {
+  (NAV || []).forEach(item => {
     if (item.children) {
-      tree.appendChild(buildSection(item, scope));
+      tree.appendChild(buildSection(item));
     } else {
       tree.appendChild(buildLink(item.file, item.title, true));
     }
   });
-
-  // Mark active link
   markActive(currentFile);
 }
 
-function buildSection(section, scope) {
+function buildSection(section) {
   const wrap = document.createElement('div');
   wrap.className = 'nav-section';
 
-  const header = document.createElement('div');
-  header.className = 'nav-section-header open';
-  header.innerHTML = `<span>${section.title}</span><svg class="nav-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>`;
-  header.addEventListener('click', () => {
-    const isOpen = header.classList.toggle('open');
-    children.classList.toggle('collapsed', !isOpen);
-  });
+  const hdr = document.createElement('div');
+  hdr.className = 'nav-section-header open';
+  hdr.innerHTML = `<span>${section.title}</span>
+    <svg class="nav-arrow" width="12" height="12" viewBox="0 0 24 24"
+         fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="9 18 15 12 9 6"/>
+    </svg>`;
 
-  const children = document.createElement('div');
-  children.className = 'nav-children';
+  const kids = document.createElement('div');
+  kids.className = 'nav-children';
   section.children.forEach(child => {
-    children.appendChild(buildLink(child.file, child.title, false));
+    kids.appendChild(buildLink(child.file, child.title, false));
   });
 
-  wrap.appendChild(header);
-  wrap.appendChild(children);
+  hdr.addEventListener('click', () => {
+    const open = hdr.classList.toggle('open');
+    kids.classList.toggle('collapsed', !open);
+  });
+
+  wrap.appendChild(hdr);
+  wrap.appendChild(kids);
   return wrap;
 }
 
 function buildLink(file, title, topLevel) {
   const a = document.createElement('a');
-  a.href = '#';
+  a.href = '#' + encodeURIComponent(file.replace('content/', ''));
   a.className = 'nav-link' + (topLevel ? ' top-level' : '');
   a.dataset.file = file;
   a.textContent = title;
   a.addEventListener('click', e => {
     e.preventDefault();
     loadPage(file, title);
+    closeSidebar();
   });
   return a;
 }
@@ -138,75 +93,59 @@ function markActive(file) {
   });
 }
 
-/* ── Page loading ───────────────────────────────────────────────── */
+/* ── Page load ──────────────────────────────────────────────────── */
 async function loadPage(file, title) {
   currentFile = file;
-  setHash(file);
   markActive(file);
+  history.replaceState(null, '', '#' + encodeURIComponent(file.replace('content/', '')));
 
   const inner = document.getElementById('content-inner');
-  inner.innerHTML = '<div class="nav-loading">Loading...</div>';
+  inner.innerHTML = '<div class="loading">Loading…</div>';
 
   try {
     const r = await fetch(file);
-    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    if (!r.ok) throw new Error(`${r.status} — ${file}`);
     let md = await r.text();
-    // Strip Jekyll front matter (--- ... ---)
-    md = md.replace(/^---[\s\S]*?---\s*/m, '');
-    // Render
+    // Strip Jekyll / YAML front matter
+    md = md.replace(/^---[\s\S]*?---\s*\n?/, '');
     inner.innerHTML = marked.parse(md);
-    // Update topbar title
+
     const h1 = inner.querySelector('h1');
-    document.getElementById('topbar-title').textContent = h1 ? h1.textContent : title;
-    // Scroll to top
+    document.getElementById('topbar-title').textContent =
+      h1 ? h1.textContent : title;
+
     document.getElementById('content').scrollTop = 0;
-    window.scrollTo(0, 0);
   } catch (e) {
-    inner.innerHTML = `<div class="error-msg"><h2>Page not found</h2><p>${file}</p><p style="color:#888">${e.message}</p></div>`;
+    inner.innerHTML = `<div class="error-msg">
+      <h2>Page not found</h2><p>${file}</p><small>${e.message}</small>
+    </div>`;
   }
 }
 
 /* ── Hash routing ───────────────────────────────────────────────── */
-function setHash(file) {
-  // e.g. content/argentina/00_overview.md -> #argentina/00_overview.md
-  const hash = file.replace('content/', '');
-  history.replaceState(null, '', '#' + encodeURIComponent(hash));
-}
-
 function onHashChange() {
   const hash = decodeURIComponent(window.location.hash.slice(1));
-  if (!hash || !hash.includes('/')) return;
-  const [scope, ...rest] = hash.split('/');
-  if (scope === 'argentina' || scope === 'brazil') {
-    const file = `content/${scope}/${rest.join('/')}`;
-    if (scope !== currentScope) {
-      currentScope = scope;
-      applyScope(scope);
-      renderNav(scope);
-    }
-    loadPage(file, labelFromFile(file));
+  if (hash && hash.endsWith('.md')) {
+    const file = 'content/' + hash;
+    if (file !== currentFile) loadPage(file, labelFromFile(hash));
   }
 }
 
-/* ── Home ───────────────────────────────────────────────────────── */
-function goHome() {
-  loadPage(scopeHome(currentScope), 'Overview');
-}
-
-/* ── Mobile sidebar ─────────────────────────────────────────────── */
-function toggleSidebar() {
-  const s = document.getElementById('sidebar');
-  const o = document.getElementById('overlay');
-  s.classList.toggle('open');
-  o.classList.toggle('visible');
-}
-
 /* ── Helpers ────────────────────────────────────────────────────── */
-function labelFromFile(file) {
-  const base = file.split('/').pop().replace('.md', '');
-  return base
-    .replace(/^\d+_/, '')
-    .replace(/-/g, ' ')
-    .replace(/_/g, ' ')
+function goHome() { loadPage(DEFAULT_PAGE, 'Dinaria API'); }
+
+function labelFromFile(path) {
+  return path.split('/').pop().replace('.md', '')
+    .replace(/^\d+_/, '').replace(/[-_]/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('visible');
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('visible');
 }

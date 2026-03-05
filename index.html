@@ -1,60 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Dinaria API Docs</title>
-  <link rel="stylesheet" href="assets/style.css" />
+  <link rel="stylesheet" href="assets/style.css"/>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 
+  <!-- Overlay for mobile sidebar -->
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <a href="#" onclick="goHome();return false;" class="logo">
-        <img src="https://dinariap.github.io/dinaria-api-docs/assets/images/dinaria-logo.jpg" alt="Dinaria" class="logo-img" />
-        <span class="logo-text">API Docs</span>
+      <a class="logo" href="#" onclick="goHome(); return false;">
+        <span class="logo-mark">D</span>
+        <span class="logo-text">Dinaria API</span>
       </a>
     </div>
-
-    <div class="scope-bar">
-      <button class="chip" id="chip-argentina" onclick="setScope('argentina')">Argentina</button>
-      <button class="chip" id="chip-brazil" onclick="setScope('brazil')">Brazil</button>
-    </div>
-
-    <nav class="nav-tree" id="nav-tree">
-      <div class="nav-loading">Loading...</div>
-    </nav>
-
-    <div class="sidebar-footer">
-      <a href="spec/viewer.html" target="_blank" class="spec-link">
-        API Specification (OpenAPI)
-      </a>
-    </div>
+    <nav class="nav-tree" id="nav-tree"></nav>
   </aside>
 
-  <div class="main-wrap">
+  <!-- Main -->
+  <div class="layout">
     <header class="topbar">
-      <button class="menu-toggle" id="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
+      <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
       <span class="topbar-title" id="topbar-title">Dinaria API Docs</span>
-      <div class="topbar-actions">
-        <a href="spec/viewer.html?scope=argentina" target="_blank" class="spec-btn arg">API Spec — Argentina</a>
-        <a href="spec/viewer.html?scope=brazil"    target="_blank" class="spec-btn bra">API Spec — Brazil</a>
-        <div class="topbar-scope">
-          <button class="chip small" id="topbar-chip-argentina" onclick="setScope('argentina')">Argentina</button>
-          <button class="chip small" id="topbar-chip-brazil" onclick="setScope('brazil')">Brazil</button>
-        </div>
-      </div>
     </header>
-
     <main class="content" id="content">
       <div class="content-inner" id="content-inner">
-        <div class="nav-loading">Loading…</div>
+        <div class="loading">Loading…</div>
       </div>
     </main>
   </div>
-
-  <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
 
   <script src="assets/app.js"></script>
 </body>
