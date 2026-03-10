@@ -30,7 +30,6 @@ Dinaria enables developers to move money across payment methods, currencies, and
 
 ### Payments
 
-- [Payments Overview](04_payments_overview.md)
 - [Payment Flow](03_payment_lifecycle_states.md)
 - [Redirect Flow](06_payments_redirect_flow.md)
 - [Retrieve Payment](07_payments_retrieve.md)
