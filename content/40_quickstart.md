@@ -62,6 +62,8 @@ Example response:
 }
 ```
 
+> **Note:** Response fields may differ depending on the country and services contracted.
+
 ---
 
 # 3. Complete the payment

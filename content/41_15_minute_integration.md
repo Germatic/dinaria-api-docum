@@ -45,6 +45,8 @@ Response:
 }
 ```
 
+> **Note:** Response fields may differ depending on the country and services contracted.
+
 ---
 
 ## Step 2 — Handle nextAction

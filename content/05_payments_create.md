@@ -82,3 +82,5 @@ Your API key is scoped to a single merchant. The platform injects the correct `m
   }
 }
 ```
+
+> **Note:** The response fields may differ depending on the country and services contracted. For example, PIX payments (BRL) return a `qrData` field with the payment code, while bank transfer payments (ARS) return a `paymentData` object with CBU and reference details.
