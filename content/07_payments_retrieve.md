@@ -16,23 +16,21 @@ GET /payments/{transactionId}
 
 ## Example request
 ```bash
-curl -X GET "https://api.tuservicio.com/v1/payments/trx_123456" \
-  -H "Authorization: Bearer sk_test_xxx"
+curl -X GET "https://pay.dinaria.com/payments/f90c7c31-7a38-46dc-99ba-188a4c99da29" \
+  -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
 ## Example response
 ```json
 {
-  "transactionId": "trx_123456",
+  "transactionId": "f90c7c31-7a38-46dc-99ba-188a4c99da29",
   "externalId": "ORD-1001",
   "status": "confirmed",
   "amount": "100.50",
-  "currency": "USD",
+  "currency": "ARS",
   "metadata": {
-    "orderId": "ORD-1001",
-    "cartId": "CART-7788"
-  },
-  "paymentMethods": ["pm_card"]
+    "orderId": "ORD-1001"
+  }
 }
 ```
 

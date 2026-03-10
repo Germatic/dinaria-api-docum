@@ -29,20 +29,17 @@ Webhook events include the full payment context needed for reconciliation, inclu
 - `transactionId`
 - `externalId`
 - `metadata`
-- `paymentMethods` (IDs)
 
 ### Example payload
 ```json
 {
-  "transactionId": "trx_123456",
+  "transactionId": "f90c7c31-7a38-46dc-99ba-188a4c99da29",
   "externalId": "ORD-1001",
-  "status": "paid",
+  "status": "confirmed",
   "amount": "100.50",
-  "currency": "USD",
+  "currency": "ARS",
   "metadata": {
-    "orderId": "ORD-1001",
-    "cartId": "CART-7788"
-  },
-  "paymentMethods": ["pm_card"]
+    "orderId": "ORD-1001"
+  }
 }
 ```

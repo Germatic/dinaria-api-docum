@@ -8,69 +8,51 @@ parent: Guides
 
 This quickstart creates a payment, redirects the customer to complete it, and validates the final status.
 
-## 1) (Optional) List payment methods
+## 1) Create a payment
 
-`paymentMethods` are **IDs**. Use this endpoint to discover the IDs available for a given country/currency.
+Send `amount`, `currency`, `externalId`, `customer`, and optionally `metadata`.
 
-```bash
-curl -X GET "https://api.dinaria.com/v1/payment-methods?country=US&currency=USD" \
-  -H "Authorization: Bearer sk_test_xxx"
-```
-
-## 2) Create a payment
-
-Send:
-- `externalId` (your order/checkout reference)
-- `metadata` (payment-level free-form key-values)
-- `paymentMethods` (method **IDs**)
+The payment method is determined automatically based on the `currency` you send and the services activated for your account — no extra configuration needed.
 
 ```bash
-curl -X POST "https://api.dinaria.com/v1/payments" \
-  -H "Authorization: Bearer sk_test_xxx" \
+curl -X POST "https://pay.dinaria.com/payments" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: 2b1a2b0a-4b2b-4e6a-9c61-7b1b5a7a2f11" \
   -d '{
     "externalId": "ORD-1001",
     "amount": "100.50",
-    "currency": "USD",
-    "paymentMethods": ["pm_card", "pm_wallet"],
+    "currency": "ARS",
     "successUrl": "https://merchant.example/success",
     "cancelUrl": "https://merchant.example/cancel",
     "metadata": {
-      "orderId": "ORD-1001",
-      "cartId": "CART-7788"
+      "orderId": "ORD-1001"
     },
     "customer": {
-      "firstName": "John",
-      "lastName": "Doe",
-      "email": "john.doe@example.com",
-      "country": "US",
-      "state": "US-CA",
-      "city": "San Francisco",
-      "address": "Market Street 123",
-      "zipcode": "94105"
+      "name": "Juan Pérez",
+      "documentNumber": "20123456789"
     }
   }'
 ```
 
 **Response**
 - Store `transactionId`
-- Redirect the customer to `actionUrl`
+- Use `actionUrl` or `qrData` depending on the payment method (see note below)
 
 ```json
 {
-  "transactionId": "trx_123456",
+  "transactionId": "f90c7c31-7a38-46dc-99ba-188a4c99da29",
   "externalId": "ORD-1001",
   "status": "started",
   "amount": "100.50",
-  "currency": "USD",
-  "actionUrl": "https://pay.tuservicio.com/checkout/trx_123456",
+  "currency": "ARS",
   "metadata": {
-    "orderId": "ORD-1001",
-    "cartId": "CART-7788"
+    "orderId": "ORD-1001"
   }
 }
 ```
+
+> **Note:** Response fields may differ depending on the country and services contracted.
 
 ## 3) Redirect the customer
 

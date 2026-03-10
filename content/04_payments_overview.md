@@ -14,7 +14,6 @@ A payment represents a transaction initiated by the merchant and completed by th
 - `transactionId`: platform-generated payment identifier
 - `externalId`: merchant-provided identifier (order/checkout reference)
 - `metadata`: payment-level free-form key-value data
-- `paymentMethods`: list of payment method **IDs** (strict whitelist)
 
 
 ## Where funds go

@@ -111,7 +111,6 @@ Your server receives `POST /webhooks/payments/updates`:
   "amount": "5.00",
   "currency": "ARS",
   "metadata": { "orderId": "ORD-1001", "cartId": "CART-7788" },
-  "paymentMethods": ["DINACBU"]
 }
 ```
 
