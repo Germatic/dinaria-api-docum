@@ -74,17 +74,24 @@ PIX keys are used to receive payments. Supported key types:
 
 ## Payment method
 
-PIX payments return a `qrData` field in the response — an EMV-compliant payload string (starts with `000201...`) that you render as a QR code for the payer to scan.
+BRL payments use PIX via a static deposit key. The API response includes a `paymentData` object with the PIX key to send funds to and the `transactionId` as the payment reference.
 
 ```json
 {
-  "transactionId": "...",
+  "transactionId": "f90c7c31-7a38-46dc-99ba-188a4c99da29",
   "status": "started",
   "amount": "100.00",
   "currency": "BRL",
-  "qrData": "000201010212..."
+  "paymentData": {
+    "type": "pix_transfer",
+    "pixKey": "bc8ba248-fb33-4022-bea1-c9fab2efd341",
+    "pixKeyType": "random",
+    "reference": "f90c7c31-7a38-46dc-99ba-188a4c99da29"
+  }
 }
 ```
+
+The payer opens their bank app, selects PIX, enters the key, and sends exactly the requested amount. Payment confirmation arrives via webhook once the transfer is matched.
 
 ## Amounts
 
