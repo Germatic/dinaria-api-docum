@@ -33,7 +33,7 @@ POST /payments
 }
 ```
 
-Response:
+Response (BRL):
 
 ```json
 {
@@ -41,43 +41,24 @@ Response:
   "status": "started",
   "amount": "100.00",
   "currency": "BRL",
-  "actionUrl": "https://pay.dinaria.com/checkout/f90c7c31-7a38-46dc-99ba-188a4c99da29"
+  "paymentData": {
+    "type": "pix_transfer",
+    "pixKey": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "pixKeyType": "random",
+    "reference": "f90c7c31-7a38-46dc-99ba-188a4c99da29"
+  }
 }
 ```
 
-> **Note:** Response fields may differ depending on the country and services contracted.
+> **Note:** Response fields differ by country and contracted services. ARS payments include `actionUrl` (hosted checkout). BRL payments include `paymentData` with a static PIX deposit key — there is no redirect.
 
 ---
 
-## Step 2 — Handle nextAction
+## Step 2 — Instruct the customer
 
-Example QR:
+**BRL:** Display the `paymentData.pixKey` to the customer. Instruct them to open their bank app, initiate a PIX transfer to that key, and use the `paymentData.reference` (the `transactionId`) as the transfer description. The payment is matched automatically once the transfer is received.
 
-```json
-{
-  "nextAction": {
-    "type": "display_qr",
-    "details": {
-      "qr": {
-        "payload": "000201..."
-      }
-    }
-  }
-}
-```
-
-Example redirect:
-
-```json
-{
-  "nextAction": {
-    "type": "redirect_to_url",
-    "details": {
-      "url": "https://bank.example/pay"
-    }
-  }
-}
-```
+**ARS:** Redirect the customer to `actionUrl`. The hosted page shows the CBU and reference for the bank transfer.
 
 ---
 

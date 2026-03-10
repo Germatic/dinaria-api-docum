@@ -68,7 +68,8 @@ Your API key is scoped to a single merchant. The platform injects the correct `m
 }
 ```
 
-## Example response
+## Example response — ARS (bank transfer)
+
 ```json
 {
   "transactionId": "f90c7c31-7a38-46dc-99ba-188a4c99da29",
@@ -83,4 +84,29 @@ Your API key is scoped to a single merchant. The platform injects the correct `m
 }
 ```
 
-> **Note:** The response fields may differ depending on the country and services contracted. For example, PIX payments (BRL) return a `qrData` field with the payment code, while bank transfer payments (ARS) return a `paymentData` object with CBU and reference details.
+The customer is redirected to `actionUrl`, where they receive bank transfer instructions (CBU + reference).
+
+## Example response — BRL (PIX)
+
+```json
+{
+  "transactionId": "f90c7c31-7a38-46dc-99ba-188a4c99da29",
+  "externalId": "ORD-1001",
+  "status": "started",
+  "amount": "100.00",
+  "currency": "BRL",
+  "paymentData": {
+    "type": "pix_transfer",
+    "pixKey": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "pixKeyType": "random",
+    "reference": "f90c7c31-7a38-46dc-99ba-188a4c99da29"
+  },
+  "metadata": {
+    "orderId": "ORD-1001"
+  }
+}
+```
+
+For BRL payments, the response includes a `paymentData` object with a static PIX deposit key. There is no redirect — display the PIX key and instruct the customer to initiate the transfer in their bank app, using the `reference` (the `transactionId`) as the transfer description.
+
+> **Note:** Response fields differ by country and contracted services. See [Data Formats](13_data_formats_iso.md) for country-specific details.

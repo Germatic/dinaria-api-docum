@@ -50,7 +50,7 @@ POST /payments
 }
 ```
 
-Example response:
+Example response (BRL):
 
 ```json
 {
@@ -58,35 +58,24 @@ Example response:
   "status": "started",
   "amount": "100.00",
   "currency": "BRL",
-  "actionUrl": "https://pay.dinaria.com/checkout/f90c7c31-7a38-46dc-99ba-188a4c99da29"
+  "paymentData": {
+    "type": "pix_transfer",
+    "pixKey": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "pixKeyType": "random",
+    "reference": "f90c7c31-7a38-46dc-99ba-188a4c99da29"
+  }
 }
 ```
 
-> **Note:** Response fields may differ depending on the country and services contracted.
+> **Note:** Response fields differ by country and contracted services. ARS payments include `actionUrl` (hosted checkout with bank transfer instructions). BRL payments include `paymentData` with a static PIX deposit key.
 
 ---
 
 # 3. Complete the payment
 
-Hosted mode:
+**ARS:** Redirect the customer to `actionUrl`. The hosted page shows bank transfer instructions (CBU + reference).
 
-Redirect the payer to:
-
-actionUrl
-
-Advanced mode:
-
-Use nextAction to render your own UI.
-
-Supported types:
-
-- redirect_to_url
-- display_qr
-- display_instructions
-- display_voucher
-- display_reference
-- collect_customer_data
-- none
+**BRL:** Display the `paymentData.pixKey` to the customer and instruct them to initiate a PIX transfer in their bank app, using `paymentData.reference` as the transfer description.
 
 ---
 
