@@ -24,29 +24,29 @@ Both fields are optional — send only the ones you want to change.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `defaultExpirationHours` | number | `12` | How many hours an unmatched incoming transfer is held before being automatically refunded. Must be greater than 0. |
-| `refundPolicy` | string | `"on_reception"` | `"on_reception"` — refund immediately when no matching order is found.<br>`"on_expiration"` — hold the transfer and retry matching for up to `defaultExpirationHours`, then refund. |
+| `defaultExpirationHours` | number | `0` | How many hours an unmatched incoming transfer is held before being automatically refunded. `0` means hold indefinitely — no automatic refund. Must be `0` or greater. |
+| `refundPolicy` | string | `"on_reception"` | `"on_reception"` — refund immediately when no matching order is found.<br>`"on_expiration"` — hold the transfer and retry matching. If `defaultExpirationHours` is `0`, holds indefinitely until manually resolved. |
 
 ---
 
 ## Examples
 
-**Set a 24-hour hold window**
+**Hold indefinitely — never auto-refund (default)**
 
 ```json
-{ "defaultExpirationHours": 24 }
+{ "refundPolicy": "on_expiration", "defaultExpirationHours": 0 }
 ```
 
-**Switch to on-expiration policy**
+**Set a 24-hour hold window, then auto-refund**
 
 ```json
 {
   "refundPolicy": "on_expiration",
-  "defaultExpirationHours": 6
+  "defaultExpirationHours": 24
 }
 ```
 
-**Revert to immediate refunds**
+**Refund immediately on no match**
 
 ```json
 { "refundPolicy": "on_reception" }
@@ -70,7 +70,7 @@ Both fields are optional — send only the ones you want to change.
 
 | Status | Code | Cause |
 |--------|------|-------|
-| `400` | `invalid_request` | `defaultExpirationHours` ≤ 0, or unknown `refundPolicy` value. |
+| `400` | `invalid_request` | `defaultExpirationHours` is negative, or unknown `refundPolicy` value. |
 | `401` | `unauthorized` | Missing or invalid API key. |
 | `404` | `not_found` | Merchant not found or does not belong to your account. |
 
