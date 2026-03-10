@@ -26,6 +26,12 @@ Dinaria enables developers to move money across payment methods, currencies, and
 
 ---
 
+## Configuration
+
+- [Merchant Settings](06_merchant_settings.md)
+
+---
+
 ## Money In
 
 ### Payments
