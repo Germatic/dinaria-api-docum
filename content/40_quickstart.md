@@ -42,9 +42,10 @@ POST /payments
 {
   "amount": "100.00",
   "currency": "BRL",
+  "externalId": "ORD-1001",
   "customer": {
-    "firstName": "João",
-    "lastName": "Silva"
+    "name": "João Silva",
+    "documentNumber": "12345678901"
   }
 }
 ```
@@ -53,12 +54,11 @@ Example response:
 
 ```json
 {
-  "paymentId": "pay_123",
-  "status": "pending",
-  "actionUrl": "https://pay.dinaria.com/...",
-  "nextAction": {
-    "type": "display_qr"
-  }
+  "transactionId": "f90c7c31-7a38-46dc-99ba-188a4c99da29",
+  "status": "started",
+  "amount": "100.00",
+  "currency": "BRL",
+  "actionUrl": "https://pay.dinaria.com/checkout/f90c7c31-7a38-46dc-99ba-188a4c99da29"
 }
 ```
 
