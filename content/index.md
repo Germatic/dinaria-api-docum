@@ -21,7 +21,6 @@ Dinaria enables developers to move money across payment methods, currencies, and
 ## Core Concepts
 
 - [Money Movement Model](30_money_movement_model.md)
-- [Accounts](20_accounts.md)
 - [Participants](31_participants.md)
 - [FX](32_fx.md)
 

@@ -20,10 +20,7 @@ A payment represents a transaction initiated by the merchant and completed by th
 
 Payments are credited to an **operating account**.
 
-- If you include `destinationAccountId`, Dinaria credits that account.
-- If you omit `destinationAccountId`, Dinaria credits your **default operating account** for the payment currency.
-
-See: [Accounts & Balance](20_accounts.md)
+Funds are credited to your operating account for the payment currency.
 
 ## Hosted vs Advanced UI (uiMode)
 

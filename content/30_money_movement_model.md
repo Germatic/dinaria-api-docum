@@ -27,7 +27,6 @@ Dinaria supports two integration modes:
 
 Funds are credited into an **operating account**. Your balance is split into `available`, `pending`, and `reserved`.
 
-See: [Accounts & Balance](20_accounts.md)
 
 ## Money-out (Payouts)
 
