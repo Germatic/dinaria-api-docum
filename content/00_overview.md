@@ -13,7 +13,6 @@ This portal contains guides and references to help you integrate payments quickl
 ## What you can do with this API
 - Create payments using a redirect-based checkout flow
 - Track payment status changes
-- Discover available payment methods
 - Receive asynchronous updates via webhooks
 
 ## Key identifiers
