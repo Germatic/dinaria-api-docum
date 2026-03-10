@@ -30,7 +30,7 @@ Authorization: Bearer sk_live_<your-merchant-key>
   "destinationCbu": "0070327530004025541644",
   "destinationName": "Gerardo Ratto",
   "status": "completed",
-  "coinagTrxId": "TRX-20260225-00123",
+  "trxId": "TRX-20260225-00123",
   "attempts": 1,
   "submittedAt": "2026-02-25T12:00:15Z",
   "completedAt": "2026-02-25T12:00:18Z",
@@ -83,7 +83,7 @@ On success the payout moves to `cancelled` and the reserved amount is returned t
 |-------|-------------|
 | `id` | Unique payout identifier. |
 | `status` | Current status: `pending`, `completed`, `failed`. |
-| `coinagTrxId` | CBU transfer transaction ID (set after submission). |
+| `trxId` | Transfer transaction ID (set after submission). |
 | `attempts` | Number of submission attempts made. |
 | `submittedAt` | Timestamp when the transfer was first submitted. |
 | `completedAt` | Timestamp when the transfer was confirmed. |
