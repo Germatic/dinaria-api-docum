@@ -51,16 +51,17 @@ curl -X POST "$BASE_URL/payments" \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "merchantId": "merchant-demo",
     "amount": "5.00",
     "currency": "ARS",
+    "externalId": "ORD-1001",
+    "customer": {
+      "name": "Juan Pérez",
+      "documentNumber": "20123456789"
+    },
     "successUrl": "https://merchant.example/success",
     "cancelUrl": "https://merchant.example/cancel",
-    "paymentMethods": ["DINACBU"],
-    "externalId": "ORD-1001",
     "metadata": {
-      "orderId": "ORD-1001",
-      "cartId": "CART-7788"
+      "orderId": "ORD-1001"
     }
   }'
 ```

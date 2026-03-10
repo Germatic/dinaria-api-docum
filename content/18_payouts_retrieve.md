@@ -24,7 +24,7 @@ Authorization: Bearer sk_live_<your-merchant-key>
 ```json
 {
   "id": "po_9f3c2a1b-7d5e-4c3a-b1d2-9e4f5a6b7c8d",
-  "merchantId": "merchant1",
+  "merchantId": "your_merchant_id",
   "amount": "1500.00",
   "currency": "ARS",
   "destinationCbu": "0070327530004025541644",

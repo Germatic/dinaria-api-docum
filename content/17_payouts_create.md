@@ -68,7 +68,7 @@ Content-Type: application/json
 ```json
 {
   "id": "po_9f3c2a1b-7d5e-4c3a-b1d2-9e4f5a6b7c8d",
-  "merchantId": "merchant1",
+  "merchantId": "your_merchant_id",
   "customerId": "cust_abc123",
   "amount": "1500.00",
   "currency": "ARS",
