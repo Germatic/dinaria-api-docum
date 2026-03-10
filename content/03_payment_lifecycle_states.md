@@ -9,37 +9,33 @@ parent: Guides
 Payments move through the following states:
 
 ## started
-Payment created successfully.
-
-## inprogress
-Customer is completing the payment.
+Payment created successfully. Awaiting customer action.
 
 ## confirmed
-Payment completed successfully.
+Payment completed successfully. Funds received.
 
 ## cancelled
 Payment was cancelled or failed.
 
 ## expired
-Payment expired before completion.
+Payment expired before the customer completed it.
 
 ## Typical transitions
 
 ```text
-started -> inprogress -> confirmed
-                      -> cancelled
-                      -> expired
+started → confirmed
+        → cancelled
+        → expired
 ```
 
 ## Recommended handling
 
-| Status       | Recommended action |
-|--------------|--------------------|
-| started      | Redirect customer to `actionUrl` |
-| inprogress   | Wait / listen to webhooks |
-| confirmed    | Fulfill order |
-| cancelled    | Allow retry (create a new payment) |
-| expired      | Create a new payment |
+| Status      | Recommended action |
+|-------------|--------------------|
+| `started`   | For ARS: redirect customer to `actionUrl`. For BRL: display PIX key from `paymentData`. |
+| `confirmed` | Fulfill the order — this is a terminal state. |
+| `cancelled` | Allow retry (create a new payment). |
+| `expired`   | Create a new payment. |
 
 ## Golden rule
-Redirects are not confirmation. Always confirm final status using webhooks or retrieve payment.
+Redirects are not confirmation. Always confirm final status using webhooks or `GET /payments/{transactionId}`.
