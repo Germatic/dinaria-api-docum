@@ -45,7 +45,54 @@ Decimal string, e.g. `"100.50"`. Two decimal places for ARS.
 
 ---
 
-## Data formats (ISO standards)
+# Data formats — Brazil
+
+## Currency
+
+**BRL** — Brazilian Real (ISO 4217)
+
+## Document numbers
+
+| Type  | Format                      | Example              |
+|-------|-----------------------------|----------------------|
+| CPF   | 11 digits (XXX.XXX.XXX-XX)  | `123.456.789-09`     |
+| CNPJ  | 14 digits (XX.XXX.XXX/XXXX-XX) | `58.084.921/0001-60` |
+
+Digits only when sending via API; formatting punctuation is accepted but stripped internally.
+
+## Payment keys (PIX)
+
+PIX keys are used to receive payments. Supported key types:
+
+| Type        | Example                                |
+|-------------|----------------------------------------|
+| CPF         | `12345678909`                          |
+| CNPJ        | `58084921000160`                       |
+| Phone       | `+5511999999999`                       |
+| Email       | `payer@example.com`                    |
+| Random key  | `bc8ba248-fb33-4022-bea1-c9fab2efd341` |
+
+## Payment method
+
+PIX payments return a `qrData` field in the response — an EMV-compliant payload string (starts with `000201...`) that you render as a QR code for the payer to scan.
+
+```json
+{
+  "transactionId": "...",
+  "status": "started",
+  "amount": "100.00",
+  "currency": "BRL",
+  "qrData": "000201010212..."
+}
+```
+
+## Amounts
+
+Decimal string, e.g. `"100.50"`. Two decimal places for BRL.
+
+---
+
+# Data formats (ISO standards)
 
 ### Country
 ISO 3166-1 alpha-2 (e.g. `AR`, `UY`, `MX`).
