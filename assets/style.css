@@ -64,23 +64,14 @@ body {
 .logo {
   display: flex;
   align-items: center;
-  gap: 10px;
   text-decoration: none;
 }
-.logo-mark {
-  width: 30px; height: 30px;
-  background: var(--accent);
-  color: #fff;
-  border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 15px;
-  flex-shrink: 0;
-}
-.logo-text {
-  font-size: 14px;
-  font-weight: 600;
-  color: #f1f5f9;
-  letter-spacing: .01em;
+.logo-img {
+  height: 28px;
+  width: auto;
+  display: block;
+  /* Invert to white so logo reads well on the dark sidebar */
+  filter: brightness(0) invert(1);
 }
 
 /* ── Nav tree ────────────────────────────────────────────────────── */
@@ -292,6 +283,15 @@ body {
 }
 .content-inner tr:last-child td { border-bottom: none; }
 
+/* Home page nav tables — hide the empty header row */
+.content-inner table thead tr th:empty,
+.content-inner table thead tr:has(th:empty) {
+  display: none;
+}
+.content-inner table thead tr th:empty ~ th {
+  display: none;
+}
+
 .content-inner blockquote {
   border-left: 3px solid var(--accent);
   background: #eff6ff;
@@ -306,6 +306,23 @@ body {
   border-top: 1px solid var(--border);
   margin: 28px 0;
 }
+
+/* ── API Reference (Redoc full-width mode) ───────────────────────── */
+.content-inner.redoc-mode {
+  max-width: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Separator above API Reference nav link */
+.nav-link-apiref {
+  margin-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  padding-top: 14px !important;
+  color: #60a5fa !important;
+  font-weight: 600 !important;
+}
+.nav-link-apiref:hover { color: #93c5fd !important; }
 
 /* ── Mobile ──────────────────────────────────────────────────────── */
 @media (max-width: 768px) {

@@ -14,7 +14,6 @@
     "title": "Core Concepts",
     "children": [
       { "title": "Money Movement Model",  "file": "content/30_money_movement_model.md" },
-      { "title": "Accounts & Balance",    "file": "content/20_accounts.md" },
       { "title": "Participants",          "file": "content/31_participants.md" },
       { "title": "FX Handling",           "file": "content/32_fx.md" },
       { "title": "Data Formats",          "file": "content/13_data_formats_iso.md" }
@@ -68,5 +67,7 @@
       { "title": "Rotate Secret",           "file": "content/11_rotate-webhook-secret.md" },
       { "title": "Event Types",             "file": "content/35_webhook_event_types.md" }
     ]
-  }
+  },
+
+  { "title": "API Reference", "file": "apiref" }
 ]

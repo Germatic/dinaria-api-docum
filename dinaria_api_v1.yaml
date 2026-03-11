@@ -1,0 +1,1275 @@
+openapi: 3.0.3
+info:
+  title: Dinaria Payment API
+  version: 2.0.0
+  description: |
+    API for receiving funds from customers (pay-in) and sending money out (payouts).
+
+    **Supported scopes**
+    - **Argentina (ARS)** — CBU/CVU bank transfer. Customer is identified by CUIT or DNI.
+    - **Brazil (BRL)** — PIX instant transfer. Customer is identified by CPF or CNPJ.
+
+    **Key rules**
+    - Payments are single-use. Create a new payment for each attempt.
+    - Always confirm payment status via webhooks or GET /payments/{transactionId}.
+      Do not fulfil orders based on `started` status alone.
+    - Use `Idempotency-Key` on all POST requests to safely retry without creating duplicates.
+  contact:
+    email: operations@dinaria.com
+
+servers:
+  - url: https://api.dinaria.com
+    description: Production
+
+security:
+  - ApiKeyAuth: []
+
+tags:
+  - name: Payments
+    description: Create and retrieve pay-in orders.
+  - name: Payouts
+    description: Send money out to customers via bank rails.
+  - name: Merchant Settings
+    description: Configure per-merchant reconciliation behaviour.
+  - name: Webhooks
+    description: Register webhook URLs and receive payment events.
+
+# ─────────────────────────────────────────────────────────────
+# Components
+# ─────────────────────────────────────────────────────────────
+components:
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: APIKey
+      description: |
+        Include your API key in the Authorization header:
+
+            Authorization: Bearer di_live_YOUR_KEY
+
+        Keys are either account-level (require `merchantId` in the request body)
+        or merchant-scoped (resolve `merchantId` automatically).
+        Do not expose your key in client-side code.
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: |
+        UUID v4 that prevents duplicate records on retry.
+        When the same key is reused with an identical body, the original response is returned.
+        If the body differs, the request is rejected with 409.
+      schema:
+        type: string
+        example: 550e8400-e29b-41d4-a716-446655440000
+
+    TransactionIdPath:
+      name: transactionId
+      in: path
+      required: true
+      description: The `transactionId` returned when the payment was created.
+      schema:
+        type: string
+
+    PayoutIdPath:
+      name: payoutId
+      in: path
+      required: true
+      description: The `id` returned when the payout was created.
+      schema:
+        type: string
+
+    MerchantIdPath:
+      name: id
+      in: path
+      required: true
+      description: Merchant ID.
+      schema:
+        type: string
+
+  # ── Schemas ───────────────────────────────────────────────
+
+  schemas:
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code.
+              example: invalid_request
+            message:
+              type: string
+              description: Human-readable description.
+              example: customer.documentNumber must be a valid cuit or dni for AR.
+            param:
+              type: string
+              nullable: true
+              description: Field name that caused the error, when applicable.
+              example: customer.documentNumber
+
+    Customer:
+      type: object
+      required:
+        - name
+        - documentNumber
+      properties:
+        id:
+          type: string
+          readOnly: true
+          description: Platform-assigned customer ID (returned only).
+        name:
+          type: string
+          description: Full name of the payer.
+          example: Juan García
+        documentNumber:
+          type: string
+          description: |
+            **ARS**: CUIT (11 digits, e.g. `20221370075`) or DNI (7–8 digits, e.g. `22137007`).
+            **BRL**: CPF (11 digits, e.g. `12345678901`) or CNPJ (14 digits, e.g. `58084921000160`).
+            Format is validated server-side including checksum for CUIT, CPF, and CNPJ.
+            Sending a wrong value will result in `400 invalid_document`.
+          example: "20221370075"
+        documentType:
+          type: string
+          enum: [CUIT, CUIL, DNI, CPF, CNPJ]
+          description: |
+            Optional hint that speeds up document type detection.
+            If omitted, the type is inferred from the number length and format.
+        email:
+          type: string
+          format: email
+        phoneNumber:
+          type: string
+
+    PaymentDataARS:
+      type: object
+      description: Bank transfer instructions for ARS payments.
+      properties:
+        type:
+          type: string
+          enum: [transfer_to_cbu]
+        cbu:
+          type: string
+          description: Dinaria's 22-digit receiving CBU. Customer must transfer funds here.
+          example: "4310009922100000122004"
+        reference:
+          type: string
+          description: |
+            Reference code the customer must include in the transfer description/concept.
+            This is how the reconciler links the incoming bank transfer to this order.
+          example: "9032000000000000023"
+
+    PaymentDataBRL:
+      type: object
+      description: PIX transfer instructions for BRL payments.
+      properties:
+        type:
+          type: string
+          enum: [pix_transfer]
+        pixKey:
+          type: string
+          description: Dinaria's static PIX deposit key. Customer initiates a PIX transfer here.
+          example: "bc8ba248-fb33-4022-bea1-c9fab2efd341"
+        pixKeyType:
+          type: string
+          enum: [random]
+          description: Type of the PIX key (EVP/random).
+        reference:
+          type: string
+          description: |
+            The transactionId. Instruct the customer to include this in the PIX transfer
+            description so the reconciler can match the payment automatically.
+          example: "f90c7c31-7a38-46dc-99ba-188a4c99da29"
+
+    PaymentRequest:
+      type: object
+      required:
+        - amount
+        - currency
+        - customer
+      properties:
+        merchantId:
+          type: string
+          description: |
+            Target merchant ID. Required when using an account-level API key.
+            Automatically resolved when using a merchant-scoped key.
+          example: paypaga_merch_1
+        amount:
+          type: string
+          description: Decimal string with up to 2 decimal places. Must be > 0.
+          example: "1500.00"
+        currency:
+          type: string
+          enum: [ARS, BRL]
+          description: ISO 4217 currency code.
+        paymentMethod:
+          type: string
+          enum: [bank_transfer, instant_bank_transfer]
+          description: |
+            Payment method to use. If omitted, the platform selects the default for the currency:
+            - `ARS` → `bank_transfer` (CBU/CVU bank transfer)
+            - `BRL` → `instant_bank_transfer` (PIX instant transfer)
+        customer:
+          $ref: "#/components/schemas/Customer"
+        externalId:
+          type: string
+          description: Your internal order reference. Returned in responses and webhooks.
+          example: ORD-1001
+        allowOverUnder:
+          type: boolean
+          default: false
+          description: |
+            **ARS only.** When `true`, the reconciler will match this order even if the
+            received transfer amount differs slightly from `amount` (rounding, bank fees).
+            The most recently created matching order takes priority.
+        expiration:
+          type: string
+          format: date-time
+          description: |
+            ISO 8601 datetime after which the order expires. If omitted, the merchant's
+            `defaultOrderExpirationHours` setting applies (0 = never expires automatically).
+        metadata:
+          type: object
+          description: Free-form key-value pairs. Returned in responses and webhooks.
+          additionalProperties:
+            type: string
+        successUrl:
+          type: string
+          format: uri
+          description: Redirect URL on payment success (for redirect-based flows).
+        cancelUrl:
+          type: string
+          format: uri
+          description: Redirect URL on payment cancellation.
+
+    PaymentResponse:
+      type: object
+      properties:
+        transactionId:
+          type: string
+          description: Platform-generated payment identifier. Store this.
+          example: a3f7c821-4b2e-4c1a-9d3f-7e8b9c0d1e2f
+        merchantId:
+          type: string
+          example: paypaga_merch_1
+        externalId:
+          type: string
+          description: Your internal order reference, mirrored from the request.
+          example: ORD-1001
+        status:
+          type: string
+          enum: [started, confirmed, cancelled, expired]
+          description: |
+            - `started`: Payment created, awaiting customer transfer.
+            - `confirmed`: Transfer received and matched. Terminal.
+            - `cancelled`: Mismatched or rejected. Terminal.
+            - `expired`: Order expired before matching. Terminal.
+        amount:
+          type: string
+          example: "1500.00"
+        currency:
+          type: string
+          example: ARS
+        paymentMethod:
+          type: string
+          description: Resolved payment method code.
+          example: bank_transfer
+        rail:
+          type: string
+          description: Resolved rail code from the routing table.
+          example: ar_bank_transfer
+        bankSystemReference:
+          type: string
+          description: |
+            **ARS**: Banking system reference number included in the transfer instructions.
+            Not present for BRL.
+          example: "9032000000000000023"
+        bankSystemTrxId:
+          type: string
+          description: |
+            Banking system transaction ID, populated when the payment is confirmed.
+            **ARS**: COELSA clearing ID assigned on settlement.
+            **BRL**: not currently populated.
+        paymentData:
+          oneOf:
+            - $ref: "#/components/schemas/PaymentDataARS"
+            - $ref: "#/components/schemas/PaymentDataBRL"
+          description: Transfer instructions to display to the customer.
+        customer:
+          $ref: "#/components/schemas/Customer"
+        receivedAmount:
+          type: string
+          description: Actual amount received (may differ when `allowOverUnder` is true).
+        receivedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the transfer was matched.
+        reconciliationStatus:
+          type: string
+          description: Internal reconciliation detail (e.g. `matched`, `matched_over_under_over`).
+        refunded:
+          type: boolean
+        refundedAmount:
+          type: string
+          nullable: true
+        expirationDate:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+
+    PayoutRequest:
+      type: object
+      required:
+        - amount
+        - currency
+        - destinationCbu
+      properties:
+        merchantId:
+          type: string
+          description: Required when using an account-level key.
+          example: paypaga_merch_1
+        amount:
+          type: string
+          description: Decimal string. Must be ≤ merchant balance.
+          example: "500.00"
+        currency:
+          type: string
+          enum: [ARS, BRL]
+        destinationCbu:
+          type: string
+          description: |
+            **ARS**: 22-digit CBU, CVU, or CBU alias (e.g. `rattop`).
+            Aliases are automatically resolved to the real CBU + CUIT before processing.
+          example: "0070327530004025541644"
+        destinationCuit:
+          type: string
+          description: |
+            Recipient CUIT. Optional — auto-resolved from `destinationCbu` via the banking
+            network if not provided. Providing it explicitly skips the lookup.
+          example: "20221370075"
+        destinationName:
+          type: string
+          description: Recipient name. Auto-resolved if not provided.
+          example: Juan García
+        externalId:
+          type: string
+          example: PAY-OUT-001
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+
+    PayoutResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Platform-generated payout identifier (UUID).
+          example: 1078d6c2-a452-44fb-94f4-525390231ce2
+        merchantId:
+          type: string
+        status:
+          type: string
+          enum: [pending, completed, failed, cancelled]
+          description: |
+            - `pending`: Queued for processing (every ~5 min).
+            - `completed`: Transfer accepted by the banking system.
+            - `failed`: Permanently rejected after 3 attempts.
+            - `cancelled`: Cancelled via POST /payouts/{id}/cancel before processing.
+        amount:
+          type: string
+          example: "500.00"
+        currency:
+          type: string
+          example: ARS
+        destinationCbu:
+          type: string
+          description: Final resolved CBU (may differ from input if alias was resolved).
+        destinationCuit:
+          type: string
+          description: Final resolved CUIT.
+        destinationName:
+          type: string
+        bankSystemTrxId:
+          type: string
+          description: Banking system transaction ID assigned on completion.
+          example: 3D5W612E65ZJKDJW2GXYVR
+        externalId:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PayoutListResponse:
+      type: object
+      properties:
+        object:
+          type: string
+          enum: [list]
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayoutResponse"
+        hasMore:
+          type: boolean
+
+    MerchantSettingsRequest:
+      type: object
+      description: |
+        All fields are optional — omit any field to leave it unchanged.
+      properties:
+        defaultTransferExpirationHours:
+          type: number
+          minimum: 0
+          description: |
+            Hours an **unmatched incoming bank transfer** is held before auto-refund.
+            `0` = hold indefinitely (no auto-refund).
+            Only applies when `refundPolicy` is `on_expiration`.
+          example: 24
+        defaultOrderExpirationHours:
+          type: number
+          minimum: 0
+          description: |
+            Hours a **payment order** (created via POST /payments) remains open before expiring.
+            `0` = orders never expire automatically.
+            An explicit `expiration` value on the order takes precedence.
+          example: 48
+        refundPolicy:
+          type: string
+          enum: [on_reception, on_expiration]
+          description: |
+            - `on_reception`: Unmatched incoming transfers are refunded immediately.
+            - `on_expiration`: Transfers are held for `defaultTransferExpirationHours`, then refunded.
+
+    MerchantSettingsResponse:
+      type: object
+      properties:
+        merchantId:
+          type: string
+        defaultTransferExpirationHours:
+          type: number
+        defaultOrderExpirationHours:
+          type: number
+        refundPolicy:
+          type: string
+          enum: [on_reception, on_expiration]
+
+    WebhookRegistrationRequest:
+      type: object
+      required: [webhookUrl]
+      properties:
+        webhookUrl:
+          type: string
+          format: uri
+          description: HTTPS URL on your server where payment events will be delivered.
+          example: https://your-server.com/webhooks/dinaria
+
+    WebhookRegistrationResponse:
+      type: object
+      properties:
+        webhookUrl:
+          type: string
+          format: uri
+        webhookSecret:
+          type: string
+          description: |
+            HMAC-SHA256 signing secret. **Shown only once — store it securely.**
+            You will use this to verify the `X-Webhook-Signature` on every incoming event.
+          example: whsec_9f3c2a1b7d5e4c3a...
+        createdAt:
+          type: string
+          format: date-time
+
+    WebhookRotateResponse:
+      type: object
+      properties:
+        webhookUrl:
+          type: string
+          format: uri
+        webhookSecret:
+          type: string
+          description: New signing secret. Shown only once.
+          example: whsec_2b91d0f6a1d34f0b...
+        rotatedAt:
+          type: string
+          format: date-time
+        previousSecretExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the old secret stops being accepted (grace period).
+
+    WebhookPaymentEvent:
+      type: object
+      description: |
+        Event delivered by the platform to your registered webhook URL when a payment changes status.
+        Delivery is at-least-once — deduplicate by `transactionId`.
+      properties:
+        transactionId:
+          type: string
+        externalId:
+          type: string
+        merchantId:
+          type: string
+        status:
+          type: string
+          enum: [started, confirmed, cancelled, expired]
+        amount:
+          type: string
+        currency:
+          type: string
+        bankSystemTrxId:
+          type: string
+          nullable: true
+          description: Banking system transaction ID, present when status is `confirmed`.
+        receivedAmount:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        customer:
+          $ref: "#/components/schemas/Customer"
+
+  # ── Reusable examples ─────────────────────────────────────
+
+  examples:
+
+    # POST /payments — request
+    PaymentRequestARS:
+      summary: "ARS — CUIT customer"
+      value:
+        merchantId: paypaga_merch_1
+        amount: "1500.00"
+        currency: ARS
+        paymentMethod: bank_transfer
+        externalId: ORD-1001
+        customer:
+          name: Juan García
+          documentType: CUIT
+          documentNumber: "20221370075"
+        metadata:
+          orderId: ORD-1001
+
+    PaymentRequestARSDNI:
+      summary: "ARS — DNI customer (Paypaga reseller pattern)"
+      value:
+        merchantId: paypaga_merch_1
+        amount: "500.00"
+        currency: ARS
+        externalId: ORD-1002
+        allowOverUnder: true
+        customer:
+          name: María López
+          documentType: DNI
+          documentNumber: "22137007"
+
+    PaymentRequestBRL:
+      summary: "BRL — CPF customer"
+      value:
+        merchantId: bpn_merch_1
+        amount: "100.00"
+        currency: BRL
+        paymentMethod: instant_bank_transfer
+        externalId: ORD-2001
+        customer:
+          name: João Silva
+          documentType: CPF
+          documentNumber: "12345678901"
+        metadata:
+          orderId: ORD-2001
+
+    PaymentRequestBRLCNPJ:
+      summary: "BRL — CNPJ customer (company)"
+      value:
+        merchantId: bpn_merch_1
+        amount: "250.00"
+        currency: BRL
+        externalId: ORD-2002
+        customer:
+          name: Belo Brasil Ltda
+          documentType: CNPJ
+          documentNumber: "58084921000160"
+
+    # POST /payments — response
+    PaymentResponseARS:
+      summary: "ARS — started"
+      value:
+        transactionId: a3f7c821-4b2e-4c1a-9d3f-7e8b9c0d1e2f
+        merchantId: paypaga_merch_1
+        externalId: ORD-1001
+        status: started
+        amount: "1500.00"
+        currency: ARS
+        paymentMethod: bank_transfer
+        rail: ar_bank_transfer
+        bankSystemReference: "9032000000000000023"
+        paymentData:
+          type: transfer_to_cbu
+          cbu: "4310009922100000122004"
+          reference: "9032000000000000023"
+        customer:
+          id: ea272dd4-bde7-4d9a-a432-0de9e9566af5
+          name: Juan García
+          documentType: CUIT
+          documentNumber: "20221370075"
+        reconciliationStatus: unknown
+
+    PaymentResponseARSConfirmed:
+      summary: "ARS — confirmed"
+      value:
+        transactionId: a3f7c821-4b2e-4c1a-9d3f-7e8b9c0d1e2f
+        merchantId: paypaga_merch_1
+        externalId: ORD-1001
+        status: confirmed
+        amount: "1500.00"
+        currency: ARS
+        paymentMethod: bank_transfer
+        rail: ar_bank_transfer
+        bankSystemTrxId: A7B3C9D1E2F4G5H6I7J8K
+        receivedAmount: "1500.00"
+        receivedAt: "2026-03-10T15:30:00Z"
+        reconciliationStatus: matched
+        customer:
+          name: Juan García
+          documentType: CUIT
+          documentNumber: "20221370075"
+
+    PaymentResponseBRL:
+      summary: "BRL — started"
+      value:
+        transactionId: f90c7c31-7a38-46dc-99ba-188a4c99da29
+        merchantId: bpn_merch_1
+        externalId: ORD-2001
+        status: started
+        amount: "100.00"
+        currency: BRL
+        paymentMethod: instant_bank_transfer
+        rail: pix
+        paymentData:
+          type: pix_transfer
+          pixKey: bc8ba248-fb33-4022-bea1-c9fab2efd341
+          pixKeyType: random
+          reference: f90c7c31-7a38-46dc-99ba-188a4c99da29
+        customer:
+          name: João Silva
+          documentType: CPF
+          documentNumber: "12345678901"
+        reconciliationStatus: unknown
+
+    # POST /payouts — request
+    PayoutRequestARS:
+      summary: "ARS — CBU destination"
+      value:
+        merchantId: paypaga_merch_1
+        amount: "500.00"
+        currency: ARS
+        destinationCbu: "0070327530004025541644"
+        externalId: PAY-OUT-001
+
+    PayoutRequestARSAlias:
+      summary: "ARS — alias destination (auto-resolved)"
+      value:
+        merchantId: paypaga_merch_1
+        amount: "200.00"
+        currency: ARS
+        destinationCbu: rattop
+        externalId: PAY-OUT-002
+
+    # POST /payouts — response
+    PayoutResponsePending:
+      summary: "Payout pending"
+      value:
+        id: 1078d6c2-a452-44fb-94f4-525390231ce2
+        merchantId: paypaga_merch_1
+        status: pending
+        amount: "500.00"
+        currency: ARS
+        destinationCbu: "0070327530004025541644"
+        destinationCuit: "20221370075"
+        destinationName: Juan García
+        externalId: PAY-OUT-001
+        createdAt: "2026-03-10T15:00:00Z"
+        updatedAt: "2026-03-10T15:00:00Z"
+
+    PayoutResponseCompleted:
+      summary: "Payout completed"
+      value:
+        id: 1078d6c2-a452-44fb-94f4-525390231ce2
+        merchantId: paypaga_merch_1
+        status: completed
+        amount: "500.00"
+        currency: ARS
+        destinationCbu: "0070327530004025541644"
+        destinationCuit: "20221370075"
+        destinationName: Juan García
+        bankSystemTrxId: 3D5W612E65ZJKDJW2GXYVR
+        externalId: PAY-OUT-001
+        createdAt: "2026-03-10T15:00:00Z"
+        updatedAt: "2026-03-10T15:00:08Z"
+
+    # Webhook events
+    WebhookConfirmedARS:
+      summary: "ARS — payment confirmed"
+      value:
+        transactionId: a3f7c821-4b2e-4c1a-9d3f-7e8b9c0d1e2f
+        externalId: ORD-1001
+        merchantId: paypaga_merch_1
+        status: confirmed
+        amount: "1500.00"
+        currency: ARS
+        bankSystemTrxId: A7B3C9D1E2F4G5H6I7J8K
+        receivedAmount: "1500.00"
+        customer:
+          name: Juan García
+          documentType: CUIT
+          documentNumber: "20221370075"
+        metadata:
+          orderId: ORD-1001
+
+    WebhookConfirmedBRL:
+      summary: "BRL — payment confirmed"
+      value:
+        transactionId: f90c7c31-7a38-46dc-99ba-188a4c99da29
+        externalId: ORD-2001
+        merchantId: bpn_merch_1
+        status: confirmed
+        amount: "100.00"
+        currency: BRL
+        receivedAmount: "100.00"
+        customer:
+          name: João Silva
+          documentType: CPF
+          documentNumber: "12345678901"
+        metadata:
+          orderId: ORD-2001
+
+  # ── Reusable responses ────────────────────────────────────
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid API key.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: unauthorized
+              message: Missing or invalid API key.
+
+    Forbidden:
+      description: Valid key but insufficient permission.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            merchant_forbidden:
+              value:
+                error:
+                  code: forbidden
+                  message: Merchant does not belong to your account.
+                  param: merchantId
+            currency_not_enabled:
+              value:
+                error:
+                  code: currency_not_enabled
+                  message: Currency BRL is not enabled for your account.
+                  param: currency
+            payout_not_enabled:
+              value:
+                error:
+                  code: payout_not_enabled
+                  message: Payouts are not enabled for this merchant.
+
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: not_found
+              message: Payment not found.
+
+    Conflict:
+      description: Idempotency-Key reused with a different request body.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: idempotency_key_reused
+              message: The Idempotency-Key was reused with a different request payload.
+
+# ─────────────────────────────────────────────────────────────
+# Paths
+# ─────────────────────────────────────────────────────────────
+paths:
+
+  # ── Pay-in ────────────────────────────────────────────────
+
+  /payments:
+    post:
+      tags: [Payments]
+      summary: Create a payment
+      description: |
+        Creates a pay-in order. Returns transfer instructions in `paymentData`
+        to display to the customer.
+
+        **ARS**: Display `paymentData.cbu` and `paymentData.reference`. The customer
+        initiates a CBU/CVU bank transfer and **must include the reference in the
+        transfer concept/description field**. The reconciler matches it automatically.
+
+        **BRL**: Display `paymentData.pixKey`. The customer initiates a PIX transfer
+        using `paymentData.reference` as the transfer description.
+
+        Payments are single-use. Create a new one for each attempt.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentRequest"
+            examples:
+              ars_cuit:
+                $ref: "#/components/examples/PaymentRequestARS"
+              ars_dni:
+                $ref: "#/components/examples/PaymentRequestARSDNI"
+              brl_cpf:
+                $ref: "#/components/examples/PaymentRequestBRL"
+              brl_cnpj:
+                $ref: "#/components/examples/PaymentRequestBRLCNPJ"
+      responses:
+        "200":
+          description: Payment created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+              examples:
+                ars_started:
+                  $ref: "#/components/examples/PaymentResponseARS"
+                brl_started:
+                  $ref: "#/components/examples/PaymentResponseBRL"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalid_document:
+                  value:
+                    error:
+                      code: invalid_document
+                      message: customer.documentNumber must be a valid cuit or dni for AR.
+                      param: customer.documentNumber
+                missing_field:
+                  value:
+                    error:
+                      code: invalid_request
+                      message: merchantId, amount and currency are required.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /payments/{transactionId}:
+    get:
+      tags: [Payments]
+      summary: Retrieve a payment
+      description: |
+        Returns the current state of a payment.
+
+        Use this to check status after creation or to reconcile when webhooks are delayed.
+        Prefer webhooks for production integrations — do not poll aggressively.
+      parameters:
+        - $ref: "#/components/parameters/TransactionIdPath"
+      responses:
+        "200":
+          description: Payment details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+              examples:
+                ars_confirmed:
+                  $ref: "#/components/examples/PaymentResponseARSConfirmed"
+                ars_started:
+                  $ref: "#/components/examples/PaymentResponseARS"
+                brl_started:
+                  $ref: "#/components/examples/PaymentResponseBRL"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Payouts ───────────────────────────────────────────────
+
+  /payouts:
+    post:
+      tags: [Payouts]
+      summary: Create a payout
+      description: |
+        Sends money out to a customer's bank account.
+
+        The merchant's balance is debited immediately at creation time.
+        Processing happens asynchronously every ~5 minutes via the payout processor.
+
+        **CBU alias**: `destinationCbu` accepts an alias (e.g. `rattop`) — the real CBU,
+        CUIT, and name are resolved automatically before sending.
+
+        **CUIT auto-resolution**: if `destinationCuit` is omitted, the platform resolves
+        it from the CBU automatically. Providing it explicitly skips the lookup.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PayoutRequest"
+            examples:
+              cbu:
+                $ref: "#/components/examples/PayoutRequestARS"
+              alias:
+                $ref: "#/components/examples/PayoutRequestARSAlias"
+      responses:
+        "200":
+          description: Payout created. Status will be `pending` until processed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayoutResponse"
+              examples:
+                pending:
+                  $ref: "#/components/examples/PayoutResponsePending"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error:
+                  code: invalid_request
+                  message: amount and currency are required.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "402":
+          description: Insufficient merchant balance.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error:
+                  code: insufficient_balance
+                  message: Merchant balance is insufficient for this payout.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+    get:
+      tags: [Payouts]
+      summary: List payouts
+      description: Returns payouts for the authenticated merchant, newest first.
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, completed, failed, cancelled]
+          description: Filter by status.
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: startingAfter
+          in: query
+          schema:
+            type: string
+          description: Cursor pagination — pass the `id` of the last item in the previous page.
+      responses:
+        "200":
+          description: List of payouts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayoutListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /payouts/{payoutId}:
+    get:
+      tags: [Payouts]
+      summary: Retrieve a payout
+      parameters:
+        - $ref: "#/components/parameters/PayoutIdPath"
+      responses:
+        "200":
+          description: Payout details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayoutResponse"
+              examples:
+                completed:
+                  $ref: "#/components/examples/PayoutResponseCompleted"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /payouts/{payoutId}/cancel:
+    post:
+      tags: [Payouts]
+      summary: Cancel a payout
+      description: |
+        Cancels a `pending` payout before the processor picks it up.
+        The debited amount is immediately restored to the merchant's balance.
+        Returns `409` if the payout has already been processed.
+      parameters:
+        - $ref: "#/components/parameters/PayoutIdPath"
+      responses:
+        "200":
+          description: Payout cancelled. Balance restored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayoutResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Payout is not in `pending` status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error:
+                  code: not_cancelable
+                  message: Only pending payouts can be cancelled.
+
+  # ── Merchant settings ─────────────────────────────────────
+
+  /merchants/{id}/settings:
+    put:
+      tags: [Merchant Settings]
+      summary: Update merchant settings
+      description: |
+        Configures per-merchant reconciliation behaviour.
+        All fields are optional — send only the ones you want to change.
+
+        **`defaultTransferExpirationHours`**: governs *incoming bank transfers* with no
+        matching order. Only relevant when `refundPolicy` is `on_expiration`.
+
+        **`defaultOrderExpirationHours`**: governs *payment orders* created via POST /payments.
+        An explicit `expiration` value on the order takes precedence.
+
+        **`refundPolicy`**:
+        - `on_reception`: unmatched transfers are refunded immediately upon arrival.
+        - `on_expiration`: transfers are held for `defaultTransferExpirationHours`, then refunded.
+      parameters:
+        - $ref: "#/components/parameters/MerchantIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MerchantSettingsRequest"
+            examples:
+              expiration_policy:
+                summary: Hold transfers 24h, orders expire after 48h
+                value:
+                  defaultTransferExpirationHours: 24
+                  defaultOrderExpirationHours: 48
+                  refundPolicy: on_expiration
+              immediate_refund:
+                summary: Refund immediately, orders never expire
+                value:
+                  refundPolicy: on_reception
+      responses:
+        "200":
+          description: Settings updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MerchantSettingsResponse"
+              example:
+                merchantId: paypaga_merch_1
+                defaultTransferExpirationHours: 24
+                defaultOrderExpirationHours: 48
+                refundPolicy: on_expiration
+        "400":
+          description: Invalid value.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error:
+                  code: invalid_request
+                  message: defaultTransferExpirationHours must be >= 0.
+                  param: defaultTransferExpirationHours
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Webhooks ──────────────────────────────────────────────
+
+  /webhooks/payments:
+    post:
+      tags: [Webhooks]
+      summary: Register a webhook URL
+      description: |
+        Registers the HTTPS URL on your server where the platform will deliver payment status events.
+
+        Call this once during setup. If your URL changes, call again to update it.
+        This endpoint is called **by you** — it does not deliver any events itself.
+
+        The `webhookSecret` is returned **only once**. Store it securely in a secret manager.
+        You will use it to verify the `X-Webhook-Signature` on every incoming event.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookRegistrationRequest"
+            example:
+              webhookUrl: https://your-server.com/webhooks/dinaria
+      responses:
+        "201":
+          description: Webhook registered. Save the `webhookSecret` — shown only once.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookRegistrationResponse"
+              example:
+                webhookUrl: https://your-server.com/webhooks/dinaria
+                webhookSecret: whsec_9f3c2a1b7d5e4c3a...
+                createdAt: "2026-03-10T12:00:00Z"
+        "400":
+          description: Invalid webhook URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /webhooks/payments/rotate-secret:
+    post:
+      tags: [Webhooks]
+      summary: Rotate webhook secret
+      description: |
+        Issues a new signing secret for your registered webhook endpoint.
+        The new `webhookSecret` is returned only once — store it immediately.
+
+        If `previousSecretExpiresAt` is set, the old secret remains valid until that time
+        (grace period), giving you time to deploy the new secret before the old one stops working.
+      responses:
+        "200":
+          description: Secret rotated. Save the new `webhookSecret`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookRotateResponse"
+              example:
+                webhookUrl: https://your-server.com/webhooks/dinaria
+                webhookSecret: whsec_2b91d0f6a1d34f0b...
+                rotatedAt: "2026-03-10T13:00:00Z"
+                previousSecretExpiresAt: "2026-03-11T13:00:00Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /webhooks/payments/updates:
+    post:
+      tags: [Webhooks]
+      summary: Receive payment events (endpoint on your server)
+      description: |
+        **This endpoint is on YOUR server.** The platform calls it when a payment changes status.
+        Do not call this endpoint yourself.
+
+        **Signature verification** (required before processing):
+        1. Read the raw request body — do not parse JSON first.
+        2. Check `X-Webhook-Timestamp` is within ±5 minutes of now (replay protection).
+        3. Build the signed payload: `<timestamp>.<raw_body>`
+        4. Compute `HMAC_SHA256(webhookSecret, signed_payload)`
+        5. Compare (constant-time) with the `v1=` value in `X-Webhook-Signature`.
+        6. Reject with HTTP 401 if verification fails.
+
+        Respond with **HTTP 200 immediately**. Process the event asynchronously.
+        Delivery is at-least-once — deduplicate by `transactionId`.
+      parameters:
+        - name: X-Webhook-Timestamp
+          in: header
+          required: true
+          description: Unix timestamp in seconds.
+          schema:
+            type: integer
+            example: 1741612800
+        - name: X-Webhook-Signature
+          in: header
+          required: true
+          description: "Format: `t=<timestamp>,v1=<hex_hmac_sha256>`"
+          schema:
+            type: string
+            example: "t=1741612800,v1=9d0c...ab12"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookPaymentEvent"
+            examples:
+              ars_confirmed:
+                $ref: "#/components/examples/WebhookConfirmedARS"
+              brl_confirmed:
+                $ref: "#/components/examples/WebhookConfirmedBRL"
+      responses:
+        "200":
+          description: Event received. Always respond 200 as quickly as possible.
