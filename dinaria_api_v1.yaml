@@ -329,17 +329,58 @@ components:
           additionalProperties:
             type: string
 
+    PayoutDestination:
+      type: object
+      required:
+        - identifierType
+        - identifierValue
+      description: |
+        Canonical payout destination. Use this object for all new integrations.
+
+        **ARS identifier types**
+        | `identifierType` | Meaning |
+        |---|---|
+        | `cbu` | 22-digit CBU or CVU number |
+        | `alias_cbu` | CBU alias (e.g. `rattop`) — auto-resolved before transfer |
+
+        **BRL (PIX) identifier types**
+        | `identifierType` | Meaning |
+        |---|---|
+        | `pix_key_cpf` | CPF number (11 digits) |
+        | `pix_key_cnpj` | CNPJ number (14 digits) |
+        | `pix_key_email` | Email address registered as PIX key |
+        | `pix_key_phone` | Phone number registered as PIX key |
+        | `pix_key_random` | Random 36-char UUID PIX key |
+
+        For `pix_key_cpf` and `pix_key_cnpj` the `taxId` field is inferred from
+        `identifierValue` if not provided. For other PIX key types `taxId` is required.
+      properties:
+        identifierType:
+          type: string
+          example: cbu
+        identifierValue:
+          type: string
+          example: "0070327530004025541644"
+        taxId:
+          type: string
+          description: Recipient CPF/CNPJ (BRL) or CUIT (ARS).
+          example: "20221370075"
+        taxIdCountry:
+          type: string
+          description: ISO 3166-1 alpha-2 country code of the tax ID. Inferred when possible.
+          example: AR
+        name:
+          type: string
+          description: Recipient name. Auto-resolved for ARS CBU/alias if not provided.
+          example: Juan García
+
     PayoutRequest:
       type: object
       required:
         - amount
         - currency
-        - destinationCbu
+        - destination
       properties:
-        merchantId:
-          type: string
-          description: Required when using an account-level key.
-          example: paypaga_merch_1
         amount:
           type: string
           description: Decimal string. Must be ≤ merchant balance.
@@ -347,29 +388,35 @@ components:
         currency:
           type: string
           enum: [ARS, BRL]
-        destinationCbu:
-          type: string
-          description: |
-            **ARS**: 22-digit CBU, CVU, or CBU alias (e.g. `rattop`).
-            Aliases are automatically resolved to the real CBU + CUIT before processing.
-          example: "0070327530004025541644"
-        destinationCuit:
-          type: string
-          description: |
-            Recipient CUIT. Optional — auto-resolved from `destinationCbu` via the banking
-            network if not provided. Providing it explicitly skips the lookup.
-          example: "20221370075"
-        destinationName:
-          type: string
-          description: Recipient name. Auto-resolved if not provided.
-          example: Juan García
+        destination:
+          $ref: "#/components/schemas/PayoutDestination"
         externalId:
           type: string
           example: PAY-OUT-001
+        customerId:
+          type: string
+          description: Optional — link payout to an existing customer record.
         metadata:
           type: object
           additionalProperties:
             type: string
+        # Deprecated ARS flat fields — still accepted for backward compatibility.
+        # Use destination object for all new integrations.
+        destinationCbu:
+          type: string
+          description: "**Deprecated** — use `destination.identifierValue` instead. Accepted for backward compat (ARS only)."
+          deprecated: true
+          example: "0070327530004025541644"
+        destinationCuit:
+          type: string
+          description: "**Deprecated** — use `destination.taxId` instead."
+          deprecated: true
+          example: "20221370075"
+        destinationName:
+          type: string
+          description: "**Deprecated** — use `destination.name` instead."
+          deprecated: true
+          example: Juan García
 
     PayoutResponse:
       type: object
@@ -382,40 +429,42 @@ components:
           type: string
         status:
           type: string
-          enum: [pending, completed, failed, cancelled]
+          enum: [pending, processing, completed, failed, cancelled]
           description: |
-            - `pending`: Queued for processing (every ~5 min).
-            - `completed`: Transfer accepted by the banking system.
-            - `failed`: Permanently rejected after 3 attempts.
-            - `cancelled`: Cancelled via POST /payouts/{id}/cancel before processing.
+            - `pending`: Queued, not yet submitted to the payment network.
+            - `processing`: Submitted and awaiting final confirmation (async providers).
+            - `completed`: Transfer accepted by the banking/payment system.
+            - `failed`: Permanently rejected after max retry attempts.
+            - `cancelled`: Cancelled before processing.
         amount:
           type: string
           example: "500.00"
         currency:
           type: string
           example: ARS
-        destinationCbu:
-          type: string
-          description: Final resolved CBU (may differ from input if alias was resolved).
-        destinationCuit:
-          type: string
-          description: Final resolved CUIT.
-        destinationName:
-          type: string
+        destination:
+          $ref: "#/components/schemas/PayoutDestination"
         bankSystemTrxId:
           type: string
-          description: Banking system transaction ID assigned on completion.
+          description: Banking system / payment network transaction ID assigned on completion.
           example: 3D5W612E65ZJKDJW2GXYVR
+        errorMessage:
+          type: string
+          description: Present when status is `failed`.
+        attempts:
+          type: integer
         externalId:
           type: string
-        metadata:
-          type: object
-          additionalProperties:
-            type: string
+        customerId:
+          type: string
         createdAt:
           type: string
           format: date-time
-        updatedAt:
+        submittedAt:
+          type: string
+          format: date-time
+          description: When the payout was submitted to the payment network.
+        completedAt:
           type: string
           format: date-time
 
@@ -681,52 +730,109 @@ components:
     PayoutRequestARS:
       summary: "ARS — CBU destination"
       value:
-        merchantId: paypaga_merch_1
         amount: "500.00"
         currency: ARS
-        destinationCbu: "0070327530004025541644"
+        destination:
+          identifierType: cbu
+          identifierValue: "0070327530004025541644"
+          taxId: "20221370075"
+          name: Juan García
         externalId: PAY-OUT-001
 
     PayoutRequestARSAlias:
       summary: "ARS — alias destination (auto-resolved)"
       value:
-        merchantId: paypaga_merch_1
         amount: "200.00"
         currency: ARS
-        destinationCbu: rattop
+        destination:
+          identifierType: alias_cbu
+          identifierValue: rattop
         externalId: PAY-OUT-002
+
+    PayoutRequestBRLPix:
+      summary: "BRL — PIX (CPF key)"
+      value:
+        amount: "150.00"
+        currency: BRL
+        destination:
+          identifierType: pix_key_cpf
+          identifierValue: "12345678901"
+          name: Maria Souza
+        externalId: PAY-OUT-003
+
+    PayoutRequestBRLPixRandom:
+      summary: "BRL — PIX (random key)"
+      value:
+        amount: "75.50"
+        currency: BRL
+        destination:
+          identifierType: pix_key_random
+          identifierValue: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+          taxId: "12345678901"
+          taxIdCountry: BR
+          name: Maria Souza
+        externalId: PAY-OUT-004
 
     # POST /payouts — response
     PayoutResponsePending:
-      summary: "Payout pending"
+      summary: "Payout pending (ARS)"
       value:
         id: 1078d6c2-a452-44fb-94f4-525390231ce2
         merchantId: paypaga_merch_1
         status: pending
         amount: "500.00"
         currency: ARS
-        destinationCbu: "0070327530004025541644"
-        destinationCuit: "20221370075"
-        destinationName: Juan García
+        destination:
+          identifierType: cbu
+          identifierValue: "0070327530004025541644"
+          taxId: "20221370075"
+          taxIdCountry: AR
+          name: Juan García
         externalId: PAY-OUT-001
+        attempts: 0
         createdAt: "2026-03-10T15:00:00Z"
-        updatedAt: "2026-03-10T15:00:00Z"
 
     PayoutResponseCompleted:
-      summary: "Payout completed"
+      summary: "Payout completed (ARS)"
       value:
         id: 1078d6c2-a452-44fb-94f4-525390231ce2
         merchantId: paypaga_merch_1
         status: completed
         amount: "500.00"
         currency: ARS
-        destinationCbu: "0070327530004025541644"
-        destinationCuit: "20221370075"
-        destinationName: Juan García
+        destination:
+          identifierType: cbu
+          identifierValue: "0070327530004025541644"
+          taxId: "20221370075"
+          taxIdCountry: AR
+          name: Juan García
         bankSystemTrxId: 3D5W612E65ZJKDJW2GXYVR
+        attempts: 1
         externalId: PAY-OUT-001
         createdAt: "2026-03-10T15:00:00Z"
-        updatedAt: "2026-03-10T15:00:08Z"
+        submittedAt: "2026-03-10T15:00:05Z"
+        completedAt: "2026-03-10T15:00:08Z"
+
+    PayoutResponseCompletedBRL:
+      summary: "Payout completed (BRL PIX)"
+      value:
+        id: 2a89e7f1-bb34-4dc0-8c12-a4e390122ef0
+        merchantId: brl_merch_1
+        status: completed
+        amount: "150.00"
+        currency: BRL
+        destination:
+          identifierType: pix_key_cpf
+          identifierValue: "12345678901"
+          taxId: "12345678901"
+          taxIdCountry: BR
+          name: Maria Souza
+        bankSystemTrxId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        attempts: 1
+        externalId: PAY-OUT-003
+        createdAt: "2026-03-10T16:00:00Z"
+        submittedAt: "2026-03-10T16:00:05Z"
+        completedAt: "2026-03-10T16:00:45Z"
 
     # Webhook events
     WebhookConfirmedARS:
@@ -962,6 +1068,10 @@ paths:
                 $ref: "#/components/examples/PayoutRequestARS"
               alias:
                 $ref: "#/components/examples/PayoutRequestARSAlias"
+              brl_pix_cpf:
+                $ref: "#/components/examples/PayoutRequestBRLPix"
+              brl_pix_random:
+                $ref: "#/components/examples/PayoutRequestBRLPixRandom"
       responses:
         "200":
           description: Payout created. Status will be `pending` until processed.
