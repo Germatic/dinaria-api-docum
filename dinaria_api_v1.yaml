@@ -129,7 +129,7 @@ components:
         name:
           type: string
           description: Full name of the payer.
-          example: Juan García
+          example: Ana Martínez
         documentNumber:
           type: string
           description: |
@@ -372,7 +372,7 @@ components:
         name:
           type: string
           description: Recipient name. Auto-resolved for ARS CBU/alias if not provided.
-          example: Juan García
+          example: Ana Martínez
 
     PayoutRequest:
       type: object
@@ -416,7 +416,7 @@ components:
           type: string
           description: "**Deprecated** — use `destination.name` instead."
           deprecated: true
-          example: Juan García
+          example: Ana Martínez
 
     PayoutResponse:
       type: object
@@ -428,7 +428,7 @@ components:
         accountId:
           type: string
           description: Account that owns this payout.
-          example: paypaga
+          example: acme_ars
         merchantId:
           type: string
         status:
@@ -618,7 +618,7 @@ components:
         paymentMethod: bank_transfer
         externalId: ORD-1001
         customer:
-          name: Juan García
+          name: Ana Martínez
           documentType: CUIT
           documentNumber: "20221370075"
         metadata:
@@ -683,7 +683,7 @@ components:
           reference: "9032000000000000023"
         customer:
           id: ea272dd4-bde7-4d9a-a432-0de9e9566af5
-          name: Juan García
+          name: Ana Martínez
           documentType: CUIT
           documentNumber: "20221370075"
         reconciliationStatus: unknown
@@ -704,7 +704,7 @@ components:
         receivedAt: "2026-03-10T15:30:00Z"
         reconciliationStatus: matched
         customer:
-          name: Juan García
+          name: Ana Martínez
           documentType: CUIT
           documentNumber: "20221370075"
 
@@ -740,7 +740,7 @@ components:
           identifierType: cbu
           identifierValue: "0070327530004025541644"
           taxId: "20221370075"
-          name: Juan García
+          name: Ana Martínez
         externalId: PAY-OUT-001
 
     PayoutRequestARSAlias:
@@ -761,7 +761,7 @@ components:
         destination:
           identifierType: pix_key_cpf
           identifierValue: "12345678901"
-          name: Maria Souza
+          name: João Silva
         externalId: PAY-OUT-003
 
     PayoutRequestBRLPixRandom:
@@ -774,7 +774,7 @@ components:
           identifierValue: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
           taxId: "12345678901"
           taxIdCountry: BR
-          name: Maria Souza
+          name: João Silva
         externalId: PAY-OUT-004
 
     # POST /payouts — response
@@ -791,7 +791,7 @@ components:
           identifierValue: "0070327530004025541644"
           taxId: "20221370075"
           taxIdCountry: AR
-          name: Juan García
+          name: Ana Martínez
         externalId: PAY-OUT-001
         attempts: 0
         createdAt: "2026-03-10T15:00:00Z"
@@ -809,7 +809,7 @@ components:
           identifierValue: "0070327530004025541644"
           taxId: "20221370075"
           taxIdCountry: AR
-          name: Juan García
+          name: Ana Martínez
         bankSystemTrxId: 3D5W612E65ZJKDJW2GXYVR
         attempts: 1
         externalId: PAY-OUT-001
@@ -851,7 +851,7 @@ components:
         bankSystemTrxId: A7B3C9D1E2F4G5H6I7J8K
         receivedAmount: "1500.00"
         customer:
-          name: Juan García
+          name: Ana Martínez
           documentType: CUIT
           documentNumber: "20221370075"
         metadata:

@@ -60,7 +60,7 @@ Content-Type: application/json
   "destination": {
     "identifierType": "cbu",
     "identifierValue": "0070327530004025541644",
-    "name": "Gerardo Ratto"
+    "name": "Ana Martínez"
   }
 }
 ```

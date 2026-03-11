@@ -24,7 +24,7 @@ Authorization: Bearer di_live_<your-merchant-key>
 ```json
 {
   "id": "1078d6c2-a452-44fb-94f4-525390231ce2",
-  "accountId": "paypaga",
+  "accountId": "acme_ars",
   "merchantId": "acme_ars_merch1",
   "amount": "1500.00",
   "currency": "ARS",
@@ -33,7 +33,7 @@ Authorization: Bearer di_live_<your-merchant-key>
     "identifierValue": "0070327530004025541644",
     "taxId": "20221370075",
     "taxIdCountry": "AR",
-    "name": "Gerardo Ratto"
+    "name": "Ana Martínez"
   },
   "status": "completed",
   "bankSystemTrxId": "3D5W612E65ZJKDJW2GXYVR",
@@ -135,7 +135,7 @@ On success the payout moves to `cancelled` and the reserved amount is immediatel
 | `currency` | `ARS` or `BRL`. |
 | `destination` | Object with `identifierType`, `identifierValue`, `taxId`, `taxIdCountry`, `name`. |
 | `status` | See status table below. |
-| `bankSystemTrxId` | Banking/payment network transaction ID, set on completion. **ARS**: COELSA clearing ID. **BRL**: Transfero payment group ID. |
+| `bankSystemTrxId` | Banking/payment network transaction ID, set on completion. **ARS**: COELSA clearing ID. **BRL**: payment network transaction ID. |
 | `errorMessage` | Present when `status` is `failed`. Describes the rejection reason. |
 | `attempts` | Number of submission attempts made. Max 3 before permanent failure. |
 | `externalId` | Your reference, if provided at creation. |

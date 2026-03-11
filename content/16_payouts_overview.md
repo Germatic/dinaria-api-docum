@@ -52,9 +52,9 @@ Funds are sent via the COELSA clearing network to the recipient's CBU or CVU.
 | `cbu` | 22-digit CBU or CVU number | e.g. `0070327530004025541644` |
 | `alias_cbu` | CBU alias | e.g. `mialiascbu` — auto-resolved to real CBU + CUIT before sending |
 
-- `taxId` (CUIT) is **optional** — if omitted, the platform resolves it from the CBU automatically via Coinag.
+- `taxId` (CUIT) is **optional** — if omitted, the platform resolves it from the CBU automatically automatically.
 - `name` is **optional** — auto-resolved from CBU if omitted.
-- Processing is **synchronous**: a completed response from Coinag means COELSA accepted the transfer. Status goes directly from `pending` to `completed`.
+- Processing is **synchronous**: the platform confirms the transfer with the banking network. Status goes directly from `pending` to `completed`.
 
 ### Example (ARS)
 
@@ -65,7 +65,7 @@ Funds are sent via the COELSA clearing network to the recipient's CBU or CVU.
   "destination": {
     "identifierType": "cbu",
     "identifierValue": "0070327530004025541644",
-    "name": "Gerardo Ratto"
+    "name": "Ana Martínez"
   }
 }
 ```
@@ -87,7 +87,7 @@ Funds are sent via PIX to the recipient's registered PIX key.
 **Important:** the `identifierValue` must be the recipient's **registered PIX key** — not just their tax ID. A CNPJ is only usable as a PIX key if the recipient has explicitly registered it as one in their bank.
 
 - Processing is **asynchronous**: the payout moves to `processing` after submission, then to `completed` once the payment network confirms.
-- The platform polls Transfero every ~10 seconds to detect completion automatically.
+- The platform polls the payment network every ~10 seconds to detect completion automatically.
 
 ### Example (BRL)
 
