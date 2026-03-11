@@ -1,6 +1,6 @@
 ---
 title: Create a Payout
-nav_order: 11
+nav_order: 2
 parent: Money Out
 ---
 
@@ -8,7 +8,7 @@ parent: Money Out
 
 `POST /payouts`
 
-Creates a payout and immediately reserves the amount from your merchant balance. The actual bank transfer is processed asynchronously by the background processor.
+Creates a payout and immediately reserves the amount from your merchant balance. The actual transfer is submitted asynchronously by the background processor.
 
 ---
 
@@ -16,7 +16,7 @@ Creates a payout and immediately reserves the amount from your merchant balance.
 
 ```http
 POST /payouts
-Authorization: Bearer sk_live_<your-merchant-key>
+Authorization: Bearer di_live_<your-merchant-key>
 Content-Type: application/json
 ```
 
@@ -24,40 +24,105 @@ Content-Type: application/json
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `amount` | string | ✅ | Decimal amount, e.g. `"1500.00"` |
-| `currency` | string | ✅ | ISO 4217 currency code. Defaults to `ARS`. |
-| `destinationCbu` | string | ✅ | CBU or CVU of the recipient (22 digits). |
-| `destinationName` | string | — | Recipient full name. Recommended for records. |
-| `destinationCuit` | string | — | Recipient CUIT/CUIL. Recommended for compliance. |
-| `customerId` | string | — | Link this payout to a saved [Customer](customers). |
-| `merchantId` | string | — | Set server-side from your API key. Do not send. |
+| `amount` | string | ✅ | Decimal string, e.g. `"1500.00"`. Must be ≤ merchant balance. |
+| `currency` | string | ✅ | `ARS` or `BRL`. |
+| `destination` | object | ✅ | Where the funds go. See below. |
+| `externalId` | string | — | Your internal reference. Returned in responses. |
+| `customerId` | string | — | Link this payout to a saved customer record. |
+
+### `destination` object
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `identifierType` | string | ✅ | How to route the payout. See tables below. |
+| `identifierValue` | string | ✅ | The key or account number. |
+| `taxId` | string | depends | Recipient CPF/CNPJ (BRL) or CUIT (ARS). Auto-inferred for `pix_key_cpf`/`pix_key_cnpj` and ARS CBU. **Required** for `pix_key_random`, `pix_key_email`, `pix_key_phone`. |
+| `taxIdCountry` | string | — | ISO 3166-1 alpha-2 country code. Inferred when possible. |
+| `name` | string | — | Recipient name. Auto-resolved for ARS CBU/alias. |
 
 ---
 
-## Examples
+## Argentina (ARS)
 
-### One-off payout to a CBU
+### `identifierType` values
+
+| Value | Meaning |
+|-------|---------|
+| `cbu` | 22-digit CBU or CVU number |
+| `alias_cbu` | CBU alias (e.g. `rattop`) — auto-resolved to real CBU + CUIT |
+
+### Example — CBU
 
 ```json
 {
   "amount": "1500.00",
   "currency": "ARS",
-  "destinationCbu": "0070327530004025541644",
-  "destinationName": "Gerardo Ratto",
-  "destinationCuit": "20221370075"
+  "destination": {
+    "identifierType": "cbu",
+    "identifierValue": "0070327530004025541644",
+    "name": "Gerardo Ratto"
+  }
 }
 ```
 
-### Payout linked to a saved customer
+### Example — alias (auto-resolved)
 
 ```json
 {
-  "amount": "5000.00",
+  "amount": "200.00",
   "currency": "ARS",
-  "destinationCbu": "0070327530004025541644",
-  "destinationName": "Gerardo Ratto",
-  "destinationCuit": "20221370075",
-  "customerId": "cust_abc123"
+  "destination": {
+    "identifierType": "alias_cbu",
+    "identifierValue": "rattop"
+  }
+}
+```
+
+The platform resolves the real CBU, CUIT, and name from the alias before submitting to COELSA.
+
+---
+
+## Brazil (BRL / PIX)
+
+### `identifierType` values
+
+| Value | `identifierValue` | `taxId` required? |
+|-------|---|---|
+| `pix_key_cpf` | CPF (11 digits) | No — inferred |
+| `pix_key_cnpj` | CNPJ (14 digits) | No — inferred |
+| `pix_key_email` | Email registered as PIX key | **Yes** |
+| `pix_key_phone` | Phone number registered as PIX key | **Yes** |
+| `pix_key_random` | Random UUID PIX key (EVP) | **Yes** |
+
+> ⚠️ A CNPJ is only usable as a PIX key if the recipient has explicitly registered it as one in their bank app. If not registered, the payout will fail with a Pix Key Error. When in doubt, ask the recipient for their registered PIX key type.
+
+### Example — CPF key
+
+```json
+{
+  "amount": "150.00",
+  "currency": "BRL",
+  "destination": {
+    "identifierType": "pix_key_cpf",
+    "identifierValue": "12345678901",
+    "name": "João Silva"
+  }
+}
+```
+
+### Example — random EVP key
+
+```json
+{
+  "amount": "75.50",
+  "currency": "BRL",
+  "destination": {
+    "identifierType": "pix_key_random",
+    "identifierValue": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "taxId": "12345678901",
+    "taxIdCountry": "BR",
+    "name": "João Silva"
+  }
 }
 ```
 
@@ -65,23 +130,27 @@ Content-Type: application/json
 
 ## Response
 
+The payout is returned immediately in `pending` status. Use the `id` to track progress.
+
 ```json
 {
-  "id": "po_9f3c2a1b-7d5e-4c3a-b1d2-9e4f5a6b7c8d",
-  "merchantId": "your_merchant_id",
-  "customerId": "cust_abc123",
-  "amount": "1500.00",
-  "currency": "ARS",
-  "destinationCbu": "0070327530004025541644",
-  "destinationName": "Gerardo Ratto",
-  "destinationCuit": "20221370075",
+  "id": "5caa9072-4500-4bfd-b800-c31a63f3d404",
+  "accountId": "bpn1",
+  "merchantId": "bpn1_merch1",
+  "amount": "2.00",
+  "currency": "BRL",
+  "destination": {
+    "identifierType": "pix_key_cpf",
+    "identifierValue": "71888025131",
+    "taxId": "71888025131",
+    "taxIdCountry": "BR",
+    "name": "Luis Palima"
+  },
   "status": "pending",
   "attempts": 0,
-  "createdAt": "2026-02-25T12:00:00Z"
+  "createdAt": "2026-03-11T23:01:17Z"
 }
 ```
-
-The payout is returned in `pending` status — the transfer has not yet been submitted. Use the `id` to [retrieve the payout](retrieve-list-payouts) and track its status.
 
 ---
 
@@ -89,33 +158,21 @@ The payout is returned in `pending` status — the transfer has not yet been sub
 
 | Status | Code | Cause |
 |--------|------|-------|
-| `400` | `invalid_request` | Missing or malformed field (e.g. empty `amount` or `destinationCbu`). |
+| `400` | `invalid_request` | Missing or malformed field. |
 | `401` | `unauthorized` | Missing or invalid API key. |
-| `403` | `forbidden` | API key is not merchant-scoped. |
-| `402` | `insufficient_balance` | Merchant balance is too low for this payout amount. |
-| `500` | `internal_error` | Unexpected server error. Retry with an idempotency key. |
+| `402` | `insufficient_balance` | Merchant balance too low for this payout. |
+| `403` | `payout_not_enabled` | Payouts not enabled for this merchant. |
+| `403` | `forbidden` | Merchant does not belong to your account. |
+| `409` | `idempotency_key_reused` | Same `Idempotency-Key` reused with a different body. |
 
 ---
 
 ## Idempotency
 
-To safely retry a failed or timed-out request without creating duplicate payouts, include an `Idempotency-Key` header:
+Include an `Idempotency-Key` header to safely retry without creating duplicates:
 
 ```http
-Idempotency-Key: payout-2026-02-25-order-1001
+Idempotency-Key: payout-2026-03-11-order-1001
 ```
 
 Reusing the same key with an identical body returns the original payout. Reusing it with a different body returns `409 Conflict`.
-
-## FX options
-
-### Quote (locks rate)
-
-1) Create quote (`POST /fx/quotes`)
-2) Create payout with `fxQuoteId`
-
-### Auto-quote (simplest)
-
-Set `autoQuote=true` and provide `amount`, `currency`, and optionally `amountType`.
-
-See: [FX Handling](32_fx.md)

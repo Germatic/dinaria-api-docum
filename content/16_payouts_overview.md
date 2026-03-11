@@ -1,117 +1,139 @@
+---
+title: Payouts Overview
+nav_order: 1
+parent: Money Out
+---
 
 # Payouts Overview
 
-Payouts move funds from your Dinaria operating account to a recipient.
-
-## Beneficiary
-
-A **Beneficiary** represents the destination of a payout.
-
-It is not tied to a specific rail.
-
-Beneficiaries are used for:
-
-- Bank payouts
-- Cash withdrawals
-- Wallet payouts (future)
-
-Cash is simply one of the payout rails.
-
-A payout always requires a destination → the beneficiary.
-
-## Rails
-
-The payout rail defines how the funds are delivered:
-
-- Bank
-- Cash
-- Wallet (future)
-
-Example:
-
-Bank payout → beneficiary receives funds in a bank account  
-Cash payout → beneficiary receives funds at an agent location
-
-
-## Proxy-key rails (e.g., PIX)
-
-Some payout rails route using a **proxy key** rather than full bank coordinates.
-
-Examples include:
-- **PIX** (Brazil) using a PIX key (email/phone/CPF/CNPJ/EVP)
-- other instant schemes that use aliases or keys
-
-In these cases, use a `destination` of type `proxy_key` and provide:
-- `scheme` (e.g., `PIX`)
-- `keyType`
-- `key`
-
-
-## Saved Beneficiaries
-
-You may either:
-
-- Send payouts inline (quick setup)
-- Or create reusable beneficiaries and attach destinations
-
-Example flow:
-
-1) Create beneficiary
-2) Add bank or proxy-key destination
-3) Send payout using beneficiaryId
-
-This is recommended for recurring payouts.
-
-
-## Saved beneficiaries and destinations
-
-For recurring payouts, you can store a beneficiary and attach reusable destinations:
-
-- **Bank accounts**: `POST /beneficiaries/{beneficiaryId}/bank-accounts`
-- **Proxy keys** (e.g., PIX key): `POST /beneficiaries/{beneficiaryId}/proxy-keys`
-
-Then, when creating a payout, reference:
-
-- `beneficiaryId` plus `bankAccountId`, or
-- `beneficiaryId` plus `proxyKeyId`
-
-You can also send everything inline using `beneficiary` + `destination` for one-off payouts.
-
-
+A payout sends money from your Dinaria merchant balance to a recipient via the local payment rail.
 
 ---
 
-## Destinations (Where the money goes)
+## How payouts work
 
-A payout always has:
+1. You call `POST /payouts` with the amount, currency, and destination.
+2. The merchant's balance is **reserved immediately** — the funds are not available until the payout is completed or cancelled.
+3. A background processor submits the transfer to the payment network asynchronously.
+4. The payout moves through the following states:
 
-- **Beneficiary**: who receives the money
-- **Destination**: how/where the beneficiary receives it (the rail)
+```
+pending → processing → completed
+                     → failed
+pending → cancelled  (if you cancel before processing starts)
+```
 
-Dinaria supports two destination styles:
+---
 
-### 1) Inline destination (one-off)
-You send the destination directly in the payout request.
+## Destination
 
-### 2) Saved destinations (recommended for recurring payouts)
-You create a beneficiary and attach one or more destinations, then reference them by ID.
+Every payout requires a `destination` object that identifies the recipient and how to reach them.
 
-### Destination types
-
-| destination.type | Use case | Notes |
-|---|---|---|
-| `bank` | Bank deposit | Provide bank account coordinates (varies by country) |
-| `proxy_key` | Key/alias based rails (e.g., PIX) | Provide `scheme`, `keyType`, and `key` |
-| `cash` | Cash pickup / withdrawal | Uses the cash endpoints (agents + withdrawal creation) |
-
-### Example: proxy_key (PIX)
 ```json
 {
   "destination": {
-    "type": "proxy_key",
-    "scheme": "PIX",
-    "keyType": "EMAIL",
-    "key": "joao@exemplo.com"
+    "identifierType": "pix_key_cpf",
+    "identifierValue": "12345678901",
+    "name": "João Silva"
   }
 }
 ```
+
+The `identifierType` tells the platform which rail and key type to use.
+
+---
+
+## Argentina (ARS) — CBU/CVU bank transfer
+
+Funds are sent via the COELSA clearing network to the recipient's CBU or CVU.
+
+| `identifierType` | `identifierValue` | Notes |
+|---|---|---|
+| `cbu` | 22-digit CBU or CVU number | e.g. `0070327530004025541644` |
+| `alias_cbu` | CBU alias | e.g. `rattop` — auto-resolved to real CBU + CUIT before sending |
+
+- `taxId` (CUIT) is **optional** — if omitted, the platform resolves it from the CBU automatically via Coinag.
+- `name` is **optional** — auto-resolved from CBU if omitted.
+- Processing is **synchronous**: a completed response from Coinag means COELSA accepted the transfer. Status goes directly from `pending` to `completed`.
+
+### Example (ARS)
+
+```json
+{
+  "amount": "1500.00",
+  "currency": "ARS",
+  "destination": {
+    "identifierType": "cbu",
+    "identifierValue": "0070327530004025541644",
+    "name": "Gerardo Ratto"
+  }
+}
+```
+
+---
+
+## Brazil (BRL) — PIX instant transfer
+
+Funds are sent via PIX to the recipient's registered PIX key.
+
+| `identifierType` | `identifierValue` | `taxId` required? |
+|---|---|---|
+| `pix_key_cpf` | CPF (11 digits), e.g. `12345678901` | No — inferred from `identifierValue` |
+| `pix_key_cnpj` | CNPJ (14 digits), e.g. `58084921000160` | No — inferred from `identifierValue` |
+| `pix_key_email` | Email address registered as PIX key | **Yes** |
+| `pix_key_phone` | Phone number registered as PIX key | **Yes** |
+| `pix_key_random` | Random UUID PIX key (EVP) | **Yes** |
+
+**Important:** the `identifierValue` must be the recipient's **registered PIX key** — not just their tax ID. A CNPJ is only usable as a PIX key if the recipient has explicitly registered it as one in their bank.
+
+- Processing is **asynchronous**: the payout moves to `processing` after submission, then to `completed` once the payment network confirms.
+- The platform polls Transfero every ~10 seconds to detect completion automatically.
+
+### Example (BRL)
+
+```json
+{
+  "amount": "150.00",
+  "currency": "BRL",
+  "destination": {
+    "identifierType": "pix_key_cpf",
+    "identifierValue": "12345678901",
+    "name": "João Silva"
+  }
+}
+```
+
+---
+
+## Payout states
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Queued. Balance reserved. Not yet submitted to the payment network. |
+| `processing` | Submitted to the payment network (BRL/PIX only). Awaiting final confirmation. |
+| `completed` | Transfer confirmed by the payment network. Terminal. |
+| `failed` | Permanently rejected after max retry attempts. Balance restored. Terminal. |
+| `cancelled` | Cancelled by you before the processor picked it up. Balance restored. Terminal. |
+
+---
+
+## Merchant balance
+
+The merchant's `balance` is a virtual ledger of funds Dinaria holds on your behalf.
+
+| Event | Balance change |
+|-------|---------------|
+| Payment confirmed (customer pays in) | `+ payment.amount` |
+| `POST /payouts` accepted | `- payout.amount` (reserved immediately) |
+| Payout permanently failed (3 attempts) | `+ payout.amount` (restored) |
+| Payout cancelled | `+ payout.amount` (restored) |
+| Payout completed | no change (already deducted at creation) |
+
+A payout request returns `402 insufficient_balance` if your balance is below the payout amount at creation time.
+
+---
+
+## See also
+
+- [Create a Payout](17_payouts_create.md)
+- [Retrieve & List Payouts](18_payouts_retrieve.md)

@@ -425,6 +425,10 @@ components:
           type: string
           description: Platform-generated payout identifier (UUID).
           example: 1078d6c2-a452-44fb-94f4-525390231ce2
+        accountId:
+          type: string
+          description: Account that owns this payout.
+          example: paypaga
         merchantId:
           type: string
         status:
@@ -432,10 +436,10 @@ components:
           enum: [pending, processing, completed, failed, cancelled]
           description: |
             - `pending`: Queued, not yet submitted to the payment network.
-            - `processing`: Submitted and awaiting final confirmation (async providers).
-            - `completed`: Transfer accepted by the banking/payment system.
-            - `failed`: Permanently rejected after max retry attempts.
-            - `cancelled`: Cancelled before processing.
+            - `processing`: Submitted and awaiting final confirmation (BRL/PIX only).
+            - `completed`: Transfer confirmed by the banking/payment system. Terminal.
+            - `failed`: Permanently rejected after max retry attempts. Balance restored. Terminal.
+            - `cancelled`: Cancelled before processing. Balance restored. Terminal.
         amount:
           type: string
           example: "500.00"
@@ -816,22 +820,23 @@ components:
     PayoutResponseCompletedBRL:
       summary: "Payout completed (BRL PIX)"
       value:
-        id: 2a89e7f1-bb34-4dc0-8c12-a4e390122ef0
-        merchantId: brl_merch_1
+        id: 5caa9072-4500-4bfd-b800-c31a63f3d404
+        accountId: bpn1
+        merchantId: bpn1_merch1
         status: completed
-        amount: "150.00"
+        amount: "2.00"
         currency: BRL
         destination:
           identifierType: pix_key_cpf
-          identifierValue: "12345678901"
-          taxId: "12345678901"
+          identifierValue: "71888025131"
+          taxId: "71888025131"
           taxIdCountry: BR
-          name: Maria Souza
-        bankSystemTrxId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+          name: Luis Palima
+        bankSystemTrxId: bccfccf4-3a3c-49bd-9d0d-4d6182b3de11
         attempts: 1
-        externalId: PAY-OUT-003
-        createdAt: "2026-03-10T16:00:00Z"
-        submittedAt: "2026-03-10T16:00:05Z"
+        createdAt: "2026-03-11T23:01:17Z"
+        submittedAt: "2026-03-11T23:01:32Z"
+        completedAt: "2026-03-11T23:01:44Z"
         completedAt: "2026-03-10T16:00:45Z"
 
     # Webhook events
@@ -1050,11 +1055,15 @@ paths:
         The merchant's balance is debited immediately at creation time.
         Processing happens asynchronously every ~5 minutes via the payout processor.
 
-        **CBU alias**: `destinationCbu` accepts an alias (e.g. `rattop`) — the real CBU,
-        CUIT, and name are resolved automatically before sending.
+        **ARS CBU alias**: set `destination.identifierType` to `alias_cbu` and `destination.identifierValue`
+        to the alias (e.g. `rattop`) — the real CBU, CUIT, and name are resolved automatically before sending.
 
-        **CUIT auto-resolution**: if `destinationCuit` is omitted, the platform resolves
-        it from the CBU automatically. Providing it explicitly skips the lookup.
+        **ARS CUIT auto-resolution**: `destination.taxId` is optional for `cbu` type — the platform
+        resolves it from the CBU automatically. Providing it explicitly skips the lookup.
+
+        **BRL PIX key**: use `destination.identifierType` of `pix_key_cpf`, `pix_key_cnpj`,
+        `pix_key_email`, `pix_key_phone`, or `pix_key_random`. The value must be the recipient's
+        registered PIX key — a CNPJ is only valid if explicitly registered as a PIX key by the recipient.
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
@@ -1118,7 +1127,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [pending, completed, failed, cancelled]
+            enum: [pending, processing, completed, failed, cancelled]
           description: Filter by status.
         - name: limit
           in: query
