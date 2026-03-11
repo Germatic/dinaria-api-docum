@@ -202,7 +202,7 @@ components:
           description: |
             Target merchant ID. Required when using an account-level API key.
             Automatically resolved when using a merchant-scoped key.
-          example: paypaga_merch_1
+          example: acme_ars_merch1
         amount:
           type: string
           description: Decimal string with up to 2 decimal places. Must be > 0.
@@ -260,7 +260,7 @@ components:
           example: a3f7c821-4b2e-4c1a-9d3f-7e8b9c0d1e2f
         merchantId:
           type: string
-          example: paypaga_merch_1
+          example: acme_ars_merch1
         externalId:
           type: string
           description: Your internal order reference, mirrored from the request.
@@ -341,7 +341,7 @@ components:
         | `identifierType` | Meaning |
         |---|---|
         | `cbu` | 22-digit CBU or CVU number |
-        | `alias_cbu` | CBU alias (e.g. `rattop`) — auto-resolved before transfer |
+        | `alias_cbu` | CBU alias (e.g. `mialiascbu`) — auto-resolved before transfer |
 
         **BRL (PIX) identifier types**
         | `identifierType` | Meaning |
@@ -612,7 +612,7 @@ components:
     PaymentRequestARS:
       summary: "ARS — CUIT customer"
       value:
-        merchantId: paypaga_merch_1
+        merchantId: acme_ars_merch1
         amount: "1500.00"
         currency: ARS
         paymentMethod: bank_transfer
@@ -627,7 +627,7 @@ components:
     PaymentRequestARSDNI:
       summary: "ARS — DNI customer (Paypaga reseller pattern)"
       value:
-        merchantId: paypaga_merch_1
+        merchantId: acme_ars_merch1
         amount: "500.00"
         currency: ARS
         externalId: ORD-1002
@@ -669,7 +669,7 @@ components:
       summary: "ARS — started"
       value:
         transactionId: a3f7c821-4b2e-4c1a-9d3f-7e8b9c0d1e2f
-        merchantId: paypaga_merch_1
+        merchantId: acme_ars_merch1
         externalId: ORD-1001
         status: started
         amount: "1500.00"
@@ -692,7 +692,7 @@ components:
       summary: "ARS — confirmed"
       value:
         transactionId: a3f7c821-4b2e-4c1a-9d3f-7e8b9c0d1e2f
-        merchantId: paypaga_merch_1
+        merchantId: acme_ars_merch1
         externalId: ORD-1001
         status: confirmed
         amount: "1500.00"
@@ -750,7 +750,7 @@ components:
         currency: ARS
         destination:
           identifierType: alias_cbu
-          identifierValue: rattop
+          identifierValue: mialiascbu
         externalId: PAY-OUT-002
 
     PayoutRequestBRLPix:
@@ -782,7 +782,7 @@ components:
       summary: "Payout pending (ARS)"
       value:
         id: 1078d6c2-a452-44fb-94f4-525390231ce2
-        merchantId: paypaga_merch_1
+        merchantId: acme_ars_merch1
         status: pending
         amount: "500.00"
         currency: ARS
@@ -800,7 +800,7 @@ components:
       summary: "Payout completed (ARS)"
       value:
         id: 1078d6c2-a452-44fb-94f4-525390231ce2
-        merchantId: paypaga_merch_1
+        merchantId: acme_ars_merch1
         status: completed
         amount: "500.00"
         currency: ARS
@@ -820,24 +820,23 @@ components:
     PayoutResponseCompletedBRL:
       summary: "Payout completed (BRL PIX)"
       value:
-        id: 5caa9072-4500-4bfd-b800-c31a63f3d404
-        accountId: bpn1
-        merchantId: bpn1_merch1
+        id: d1e2f3a4-b5c6-7890-abcd-ef0123456789
+        accountId: acme_br
+        merchantId: acme_br_merch1
         status: completed
         amount: "2.00"
         currency: BRL
         destination:
           identifierType: pix_key_cpf
-          identifierValue: "71888025131"
-          taxId: "71888025131"
+          identifierValue: "98765432100"
+          taxId: "98765432100"
           taxIdCountry: BR
-          name: Luis Palima
-        bankSystemTrxId: bccfccf4-3a3c-49bd-9d0d-4d6182b3de11
+          name: Carlos Menezes
+        bankSystemTrxId: f4e3d2c1-b0a9-8765-4321-fedcba987654
         attempts: 1
         createdAt: "2026-03-11T23:01:17Z"
         submittedAt: "2026-03-11T23:01:32Z"
         completedAt: "2026-03-11T23:01:44Z"
-        completedAt: "2026-03-10T16:00:45Z"
 
     # Webhook events
     WebhookConfirmedARS:
@@ -845,7 +844,7 @@ components:
       value:
         transactionId: a3f7c821-4b2e-4c1a-9d3f-7e8b9c0d1e2f
         externalId: ORD-1001
-        merchantId: paypaga_merch_1
+        merchantId: acme_ars_merch1
         status: confirmed
         amount: "1500.00"
         currency: ARS
@@ -1056,7 +1055,7 @@ paths:
         Processing happens asynchronously every ~5 minutes via the payout processor.
 
         **ARS CBU alias**: set `destination.identifierType` to `alias_cbu` and `destination.identifierValue`
-        to the alias (e.g. `rattop`) — the real CBU, CUIT, and name are resolved automatically before sending.
+        to the alias (e.g. `mialiascbu`) — the real CBU, CUIT, and name are resolved automatically before sending.
 
         **ARS CUIT auto-resolution**: `destination.taxId` is optional for `cbu` type — the platform
         resolves it from the CBU automatically. Providing it explicitly skips the lookup.
@@ -1256,7 +1255,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/MerchantSettingsResponse"
               example:
-                merchantId: paypaga_merch_1
+                merchantId: acme_ars_merch1
                 defaultTransferExpirationHours: 24
                 defaultOrderExpirationHours: 48
                 refundPolicy: on_expiration

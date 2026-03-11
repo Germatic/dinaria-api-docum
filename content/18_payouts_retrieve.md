@@ -15,7 +15,7 @@ parent: Money Out
 Returns the current state of a payout.
 
 ```http
-GET /payouts/5caa9072-4500-4bfd-b800-c31a63f3d404
+GET /payouts/d1e2f3a4-b5c6-7890-abcd-ef0123456789
 Authorization: Bearer di_live_<your-merchant-key>
 ```
 
@@ -25,7 +25,7 @@ Authorization: Bearer di_live_<your-merchant-key>
 {
   "id": "1078d6c2-a452-44fb-94f4-525390231ce2",
   "accountId": "paypaga",
-  "merchantId": "paypaga_merch_1",
+  "merchantId": "acme_ars_merch1",
   "amount": "1500.00",
   "currency": "ARS",
   "destination": {
@@ -48,20 +48,20 @@ Authorization: Bearer di_live_<your-merchant-key>
 
 ```json
 {
-  "id": "5caa9072-4500-4bfd-b800-c31a63f3d404",
-  "accountId": "bpn1",
-  "merchantId": "bpn1_merch1",
+  "id": "d1e2f3a4-b5c6-7890-abcd-ef0123456789",
+  "accountId": "acme_br",
+  "merchantId": "acme_br_merch1",
   "amount": "2.00",
   "currency": "BRL",
   "destination": {
     "identifierType": "pix_key_cpf",
-    "identifierValue": "71888025131",
-    "taxId": "71888025131",
+    "identifierValue": "98765432100",
+    "taxId": "98765432100",
     "taxIdCountry": "BR",
-    "name": "Luis Palima"
+    "name": "Carlos Menezes"
   },
   "status": "completed",
-  "bankSystemTrxId": "bccfccf4-3a3c-49bd-9d0d-4d6182b3de11",
+  "bankSystemTrxId": "f4e3d2c1-b0a9-8765-4321-fedcba987654",
   "attempts": 1,
   "createdAt": "2026-03-11T23:01:17Z",
   "submittedAt": "2026-03-11T23:01:32Z",
@@ -109,7 +109,7 @@ Authorization: Bearer di_live_<your-merchant-key>
 Cancels a payout that is still in **`pending`** status — before the processor submits it to the payment network. Once it reaches `processing` or `completed`, cancellation is not possible.
 
 ```http
-POST /payouts/5caa9072-4500-4bfd-b800-c31a63f3d404/cancel
+POST /payouts/d1e2f3a4-b5c6-7890-abcd-ef0123456789/cancel
 Authorization: Bearer di_live_<your-merchant-key>
 ```
 

@@ -49,7 +49,7 @@ Content-Type: application/json
 | Value | Meaning |
 |-------|---------|
 | `cbu` | 22-digit CBU or CVU number |
-| `alias_cbu` | CBU alias (e.g. `rattop`) — auto-resolved to real CBU + CUIT |
+| `alias_cbu` | CBU alias (e.g. `mialiascbu`) — auto-resolved to real CBU + CUIT |
 
 ### Example — CBU
 
@@ -73,7 +73,7 @@ Content-Type: application/json
   "currency": "ARS",
   "destination": {
     "identifierType": "alias_cbu",
-    "identifierValue": "rattop"
+    "identifierValue": "mialiascbu"
   }
 }
 ```
@@ -134,17 +134,17 @@ The payout is returned immediately in `pending` status. Use the `id` to track pr
 
 ```json
 {
-  "id": "5caa9072-4500-4bfd-b800-c31a63f3d404",
-  "accountId": "bpn1",
-  "merchantId": "bpn1_merch1",
+  "id": "d1e2f3a4-b5c6-7890-abcd-ef0123456789",
+  "accountId": "acme_br",
+  "merchantId": "acme_br_merch1",
   "amount": "2.00",
   "currency": "BRL",
   "destination": {
     "identifierType": "pix_key_cpf",
-    "identifierValue": "71888025131",
-    "taxId": "71888025131",
+    "identifierValue": "98765432100",
+    "taxId": "98765432100",
     "taxIdCountry": "BR",
-    "name": "Luis Palima"
+    "name": "Carlos Menezes"
   },
   "status": "pending",
   "attempts": 0,
