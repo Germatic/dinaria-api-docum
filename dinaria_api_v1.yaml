@@ -251,6 +251,22 @@ components:
           format: uri
           description: Redirect URL on payment cancellation.
 
+    PaymentListResponse:
+      type: object
+      properties:
+        object:
+          type: string
+          enum: [list]
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PaymentResponse"
+        hasMore:
+          type: boolean
+          description: |
+            `true` if more records exist after this page. Fetch the next page by
+            passing the `transactionId` of the last item as `startingAfter`.
+
     PaymentResponse:
       type: object
       properties:
@@ -328,6 +344,10 @@ components:
           type: object
           additionalProperties:
             type: string
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the payment order was created.
 
     PayoutDestination:
       type: object
@@ -1011,6 +1031,81 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
+
+    get:
+      tags: [Payments]
+      summary: List payments
+      description: |
+        Returns pay-in orders for the authenticated merchant, newest first.
+
+        **Merchant-scoped key**: returns payments for that merchant only.
+        The `merchantId` query parameter is ignored — the scope is fixed by the key.
+
+        **Account-scoped key**: returns payments across all merchants in the account.
+        Optionally pass `?merchantId=` to narrow to a single merchant.
+
+        **Operator key**: returns all payments. Use `?merchantId=` to filter.
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [started, confirmed, cancelled, expired]
+          description: Filter by payment status.
+        - name: currency
+          in: query
+          schema:
+            type: string
+            example: BRL
+          description: Filter by currency code (e.g. `BRL`, `ARS`).
+        - name: merchantId
+          in: query
+          schema:
+            type: string
+          description: |
+            Filter by merchant. Only effective for account-scoped or operator keys.
+            Ignored for merchant-scoped keys (scope is fixed by the key).
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          description: Number of results to return per page.
+        - name: startingAfter
+          in: query
+          schema:
+            type: string
+          description: |
+            Cursor pagination — pass the `transactionId` of the last item in the
+            previous page to retrieve the next page.
+      responses:
+        "200":
+          description: List of payments.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentListResponse"
+              example:
+                object: list
+                hasMore: false
+                data:
+                  - transactionId: a3f7c821-4b2e-4c1a-9d3f-7e8b9c0d1e2f
+                    merchantId: acme_merch1
+                    amount: "150.00"
+                    currency: BRL
+                    status: confirmed
+                    createdAt: "2026-03-11T22:57:40Z"
+                    paymentData:
+                      type: pix_transfer
+                      pixKey: bc8ba248-fb33-4022-bea1-c9fab2efd341
+                      pixKeyType: random
+                      reference: a3f7c821-4b2e-4c1a-9d3f-7e8b9c0d1e2f
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /payments/{transactionId}:
     get:
