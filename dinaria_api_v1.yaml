@@ -1137,6 +1137,49 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /payments/{transactionId}/cancel:
+    post:
+      tags: [Payments]
+      summary: Cancel a payment
+      description: |
+        Cancels a payment that is in `started` status.
+
+        Use this when the end-user abandons the flow, the order is voided on
+        your side, or you need to clear stale orders so that subsequent
+        CUIT/CUIL-based matching works correctly.
+
+        Only `started` payments can be cancelled. Payments that have already
+        reached a terminal state (`confirmed`, `cancelled`, `expired`) will be
+        rejected with `422 invalid_status`.
+
+        A `payment.status_changed` webhook is dispatched immediately after a
+        successful cancellation.
+      parameters:
+        - $ref: "#/components/parameters/TransactionIdPath"
+      responses:
+        "200":
+          description: Payment successfully cancelled. Returns the updated payment object.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Payment is not in a cancellable state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error:
+                  code: invalid_status
+                  message: "Only payments in 'started' status can be cancelled. Current status: confirmed."
+
   # ── Payouts ───────────────────────────────────────────────
 
   /payouts:
